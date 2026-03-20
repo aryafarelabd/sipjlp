@@ -127,6 +127,22 @@ resources/views/
 └── laporan/           # Report views
 ```
 
+### Dokumentasi
+
+| Dokumen | Keterangan |
+|---------|------------|
+| [docs/security-hardening.md](docs/security-hardening.md) | Catatan lengkap perubahan authorization, FormRequest, dan audit logging |
+| [docs/merge-guide.md](docs/merge-guide.md) | Panduan merge fitur baru dari project lain tanpa menghilangkan security hardening |
+
+### Standar Pengembangan
+
+Setiap fitur baru wajib memenuhi:
+1. **Route** — dilindungi `can:permission.name` middleware
+2. **Validasi** — menggunakan FormRequest (bukan inline `$request->validate()`)
+3. **Audit** — setiap operasi mutasi memanggil `AuditLog::log()`
+
+Lihat [docs/security-hardening.md](docs/security-hardening.md) untuk detail dan contoh.
+
 ### Pengembangan Selanjutnya
 
 Sistem ini dirancang modular dan scalable untuk dikembangkan ke SIMRS di masa depan.
