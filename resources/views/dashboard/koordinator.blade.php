@@ -41,9 +41,18 @@
                             Kelola jadwal dan pantau kinerja PJLP unit Anda dengan mudah.
                         </div>
                     </div>
-                    <div class="col-auto">
-                        <a href="{{ route('jadwal-kerja-cs-bulanan.index') }}" class="btn btn-light">
-                            <i class="ti ti-calendar me-1"></i> Lihat Jadwal
+                    <div class="col-auto d-flex gap-2">
+                        @if($unit && $unit->value === 'security')
+                            <a href="{{ route('jadwal-security.index') }}" class="btn btn-light">
+                                <i class="ti ti-calendar me-1"></i> Jadwal Security
+                            </a>
+                        @else
+                            <a href="{{ route('jadwal-shift-cs.index') }}" class="btn btn-light">
+                                <i class="ti ti-calendar me-1"></i> Jadwal Shift CS
+                            </a>
+                        @endif
+                        <a href="{{ route('absensi.rekap') }}" class="btn btn-light">
+                            <i class="ti ti-report me-1"></i> Rekap Absensi
                         </a>
                     </div>
                 </div>
@@ -79,15 +88,22 @@
                         <div class="row align-items-center">
                             <div class="col-auto">
                                 <span class="bg-green text-white avatar">
-                                    <i class="ti ti-fingerprint"></i>
+                                    <i class="ti ti-camera-selfie"></i>
                                 </span>
                             </div>
                             <div class="col">
-                                <div class="font-weight-medium">Absensi Hari Ini</div>
-                                <div class="text-muted">dari {{ $pjlpAktif }} PJLP aktif</div>
+                                <div class="font-weight-medium">Hadir Hari Ini</div>
+                                <div class="text-muted small">
+                                    @if($absensiAlphaHariIni > 0)
+                                        <span class="text-danger">{{ $absensiAlphaHariIni }} alpha</span> &bull;
+                                    @endif
+                                    {{ $pjlpAktif - $absensiMasukHariIni }} belum
+                                </div>
                             </div>
                             <div class="col-auto">
-                                <span class="h1 mb-0 text-green">{{ $absensiHariIni }}</span>
+                                <a href="{{ route('absensi.rekap') }}" class="text-decoration-none">
+                                    <span class="h1 mb-0 text-green">{{ $absensiMasukHariIni }}</span>
+                                </a>
                             </div>
                         </div>
                     </div>
@@ -129,7 +145,7 @@
                             <div class="col">
                                 <div class="font-weight-medium">Bukti Pending</div>
                                 <div class="text-muted">
-                                    <a href="{{ route('lembar-kerja-cs.validasi-bukti-index') }}">Perlu validasi</a>
+                                    <a href="{{ route('lembar-kerja-cs.rekap') }}">Perlu validasi</a>
                                 </div>
                             </div>
                             <div class="col-auto">
@@ -151,36 +167,52 @@
             </div>
             <div class="card-body">
                 <div class="row g-3">
-                    <div class="col-6 col-md-3">
-                        <a href="{{ route('jadwal-kerja-cs-bulanan.index') }}" class="card card-link card-link-pop text-center p-3">
-                            <span class="avatar avatar-lg bg-blue-lt mb-2 mx-auto">
-                                <i class="ti ti-calendar fs-2"></i>
-                            </span>
-                            <div class="fw-medium">Input Jadwal Pekerjaan</div>
-                        </a>
-                    </div>
-                    <div class="col-6 col-md-3">
+                    <div class="col-6 col-md-2">
                         <a href="{{ route('jadwal-shift-cs.index') }}" class="card card-link card-link-pop text-center p-3">
-                            <span class="avatar avatar-lg bg-green-lt mb-2 mx-auto">
+                            <span class="avatar avatar-lg bg-blue-lt mb-2 mx-auto">
                                 <i class="ti ti-clock fs-2"></i>
                             </span>
-                            <div class="fw-medium">Input Jadwal Shift</div>
+                            <div class="fw-medium">Jadwal Shift</div>
                         </a>
                     </div>
-                    <div class="col-6 col-md-3">
-                        <a href="{{ route('lembar-kerja-cs.validasi-bukti-index') }}" class="card card-link card-link-pop text-center p-3">
+                    <div class="col-6 col-md-2">
+                        <a href="{{ route('lembar-kerja-cs.index') }}" class="card card-link card-link-pop text-center p-3">
+                            <span class="avatar avatar-lg bg-cyan-lt mb-2 mx-auto">
+                                <i class="ti ti-file-text fs-2"></i>
+                            </span>
+                            <div class="fw-medium">Lembar Kerja CS</div>
+                        </a>
+                    </div>
+                    <div class="col-6 col-md-2">
+                        <a href="{{ route('lembar-kerja-cs.rekap') }}" class="card card-link card-link-pop text-center p-3">
                             <span class="avatar avatar-lg bg-orange-lt mb-2 mx-auto">
                                 <i class="ti ti-checkbox fs-2"></i>
                             </span>
-                            <div class="fw-medium">Validasi Bukti</div>
+                            <div class="fw-medium">Validasi Bukti CS</div>
                         </a>
                     </div>
-                    <div class="col-6 col-md-3">
-                        <a href="{{ route('lembar-kerja-cs.index') }}" class="card card-link card-link-pop text-center p-3">
-                            <span class="avatar avatar-lg bg-purple-lt mb-2 mx-auto">
-                                <i class="ti ti-file-description fs-2"></i>
+                    <div class="col-6 col-md-2">
+                        <a href="{{ route('logbook-limbah.rekap') }}" class="card card-link card-link-pop text-center p-3">
+                            <span class="avatar avatar-lg bg-green-lt mb-2 mx-auto">
+                                <i class="ti ti-trash fs-2"></i>
                             </span>
-                            <div class="fw-medium">Lihat Lembar Kerja</div>
+                            <div class="fw-medium">Logbook Limbah</div>
+                        </a>
+                    </div>
+                    <div class="col-6 col-md-2">
+                        <a href="{{ route('logbook-b3.rekap') }}" class="card card-link card-link-pop text-center p-3">
+                            <span class="avatar avatar-lg bg-red-lt mb-2 mx-auto">
+                                <i class="ti ti-biohazard fs-2"></i>
+                            </span>
+                            <div class="fw-medium">Logbook B3</div>
+                        </a>
+                    </div>
+                    <div class="col-6 col-md-2">
+                        <a href="{{ route('logbook-limbah.rekap') }}" class="card card-link card-link-pop text-center p-3">
+                            <span class="avatar avatar-lg bg-purple-lt mb-2 mx-auto">
+                                <i class="ti ti-file-invoice fs-2"></i>
+                            </span>
+                            <div class="fw-medium">Rekap Logbook Limbah</div>
                         </a>
                     </div>
                 </div>
@@ -248,7 +280,7 @@
                             Bukti Menunggu Validasi
                         </h3>
                         <div class="card-actions">
-                            <a href="{{ route('lembar-kerja-cs.validasi-bukti-index') }}" class="btn btn-sm btn-outline-warning">
+                            <a href="{{ route('lembar-kerja-cs.rekap') }}" class="btn btn-sm btn-outline-warning">
                                 Validasi <i class="ti ti-arrow-right ms-1"></i>
                             </a>
                         </div>

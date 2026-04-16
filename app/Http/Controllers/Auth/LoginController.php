@@ -16,10 +16,23 @@ class LoginController extends Controller
 
     public function login(Request $request)
     {
-        $credentials = $request->validate([
-            'email' => ['required', 'email'],
+        $request->validate([
+            'login'    => ['required', 'string'],
             'password' => ['required'],
+        ], [
+            'login.required'    => 'Email atau NIP wajib diisi.',
+            'password.required' => 'Password wajib diisi.',
         ]);
+
+        $loginInput = $request->input('login');
+
+        // Deteksi otomatis: mengandung '@' → email, selainnya → NIP
+        $field = str_contains($loginInput, '@') ? 'email' : 'nip';
+
+        $credentials = [
+            $field     => $loginInput,
+            'password' => $request->input('password'),
+        ];
 
         if (Auth::attempt($credentials, $request->boolean('remember'))) {
             $user = Auth::user();
@@ -27,8 +40,8 @@ class LoginController extends Controller
             if (!$user->is_active) {
                 Auth::logout();
                 return back()->withErrors([
-                    'email' => 'Akun Anda tidak aktif. Silakan hubungi administrator.',
-                ]);
+                    'login' => 'Akun Anda tidak aktif. Silakan hubungi administrator.',
+                ])->onlyInput('login');
             }
 
             $request->session()->regenerate();
@@ -39,8 +52,8 @@ class LoginController extends Controller
         }
 
         return back()->withErrors([
-            'email' => 'Email atau password salah.',
-        ])->onlyInput('email');
+            'login' => 'Email/NIP atau password salah.',
+        ])->onlyInput('login');
     }
 
     public function logout(Request $request)

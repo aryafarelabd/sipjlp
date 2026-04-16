@@ -20,6 +20,8 @@
 
 <div class="page-body">
     <div class="container-xl">
+        @include('layouts.partials.jadwal-cs-tabs')
+
         @if(session('success'))
             <div class="alert alert-success alert-dismissible" role="alert">
                 {{ session('success') }}

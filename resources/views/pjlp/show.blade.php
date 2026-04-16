@@ -102,7 +102,7 @@
             <div class="card-header">
                 <h3 class="card-title">Riwayat Absensi Terakhir</h3>
                 <div class="card-actions">
-                    <a href="{{ route('absensi.index', ['pjlp_id' => $pjlp->id]) }}" class="btn btn-sm btn-primary">
+                    <a href="{{ route('absensi.rekap', ['search' => $pjlp->nama]) }}" class="btn btn-sm btn-primary">
                         Lihat Semua
                     </a>
                 </div>

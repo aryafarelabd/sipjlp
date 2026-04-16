@@ -23,11 +23,14 @@ class LokasiController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'nama' => 'required|string|max:255',
-            'kode' => 'required|string|max:50',
-            'gedung' => 'nullable|string|max:100',
-            'lantai' => 'nullable|string|max:20',
+            'nama'      => 'required|string|max:255',
+            'kode'      => 'required|string|max:50',
+            'gedung'    => 'nullable|string|max:100',
+            'lantai'    => 'nullable|string|max:20',
+            'is_active' => 'boolean',
         ]);
+
+        $validated['is_active'] = $request->boolean('is_active', true);
 
         $lokasi = Lokasi::create($validated);
 

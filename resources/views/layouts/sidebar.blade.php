@@ -27,9 +27,36 @@
                 </div>
             </div>
         </div>
+
         <div class="collapse navbar-collapse" id="sidebar-menu">
+            @php
+                $user      = auth()->user();
+                $userPjlp  = \App\Models\Pjlp::where('user_id', $user->id)->first();
+                $userUnit  = $user->unit; // unit di tabel users (all/cleaning/security)
+
+                $isAdmin           = $user->hasRole('admin');
+                $isKoordinator     = $user->hasRole('koordinator');
+                $isDanru           = $user->hasRole('danru');
+                $isChief           = $user->hasRole('chief');
+                $isAdminOrKoordinator = $isAdmin || $isKoordinator || $user->hasRole('manajemen');
+
+                // Unit koordinator: null atau 'all' berarti lihat semua
+                $unitValue = $userUnit?->value ?? 'all';
+                $showCs       = $isAdmin || ($isKoordinator && in_array($unitValue, ['all', 'cleaning']));
+                // Danru & chief juga tampilkan rekap security
+                $showSecurity = $isAdmin || $isDanru || $isChief
+                    || ($isKoordinator && in_array($unitValue, ['all', 'security']));
+
+                // PJLP
+                $isCleaningPjlp  = $userPjlp && $userPjlp->unit === \App\Enums\UnitType::CLEANING;
+                $isSecurityPjlp  = $userPjlp && $userPjlp->unit === \App\Enums\UnitType::SECURITY;
+            @endphp
+
             <ul class="navbar-nav pt-lg-3">
-                <!-- Dashboard -->
+
+                {{-- ============================================================
+                     DASHBOARD
+                ============================================================ --}}
                 <li class="nav-item">
                     <a class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}">
                         <span class="nav-link-icon d-md-none d-lg-inline-block">
@@ -39,8 +66,57 @@
                     </a>
                 </li>
 
-                @can('pjlp.view-all')
-                <!-- Data PJLP (Admin) -->
+                {{-- ============================================================
+                     ABSEN — hanya muncul untuk PJLP (punya profil PJLP)
+                ============================================================ --}}
+                @if($userPjlp)
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('absen.index') ? 'active' : '' }}" href="{{ route('absen.index') }}">
+                        <span class="nav-link-icon d-md-none d-lg-inline-block">
+                            <i class="ti ti-camera-selfie"></i>
+                        </span>
+                        <span class="nav-link-title">Absen Hari Ini</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('jadwal-saya.index') ? 'active' : '' }}" href="{{ route('jadwal-saya.index') }}">
+                        <span class="nav-link-icon d-md-none d-lg-inline-block">
+                            <i class="ti ti-calendar-user"></i>
+                        </span>
+                        <span class="nav-link-title">Jadwal Saya</span>
+                    </a>
+                </li>
+                @endif
+
+                {{-- ============================================================
+                     TELEGRAM — hanya koordinator & admin
+                ============================================================ --}}
+                @if(auth()->user()->hasAnyRole(['koordinator', 'admin']))
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('telegram.*') ? 'active' : '' }}" href="{{ route('telegram.index') }}">
+                        <span class="nav-link-icon d-md-none d-lg-inline-block">
+                            <i class="ti ti-brand-telegram"></i>
+                        </span>
+                        <span class="nav-link-title">
+                            Notifikasi Telegram
+                            @if(!auth()->user()->telegram_chat_id)
+                                <span class="badge bg-warning ms-1" style="font-size:0.6rem;padding:2px 5px;">Belum terhubung</span>
+                            @endif
+                        </span>
+                    </a>
+                </li>
+                @endif
+
+                {{-- ============================================================
+                     SECTION: PEGAWAI
+                     Terlihat oleh: koordinator (unit), admin (semua)
+                ============================================================ --}}
+                @canany(['pjlp.view-unit', 'pjlp.view-all'])
+                <li class="nav-item">
+                    <div class="nav-link-title text-uppercase text-muted small px-3 pt-3 pb-1" style="font-size:0.7rem;letter-spacing:.08em;">
+                        Pegawai
+                    </div>
+                </li>
                 <li class="nav-item">
                     <a class="nav-link {{ request()->routeIs('pjlp.*') ? 'active' : '' }}" href="{{ route('pjlp.index') }}">
                         <span class="nav-link-icon d-md-none d-lg-inline-block">
@@ -49,200 +125,439 @@
                         <span class="nav-link-title">Data PJLP</span>
                     </a>
                 </li>
-                @endcan
+                @endcanany
 
-                @can('pjlp.view-unit')
-                <!-- Data PJLP (Koordinator) -->
+                {{-- ============================================================
+                     SECTION: ABSENSI
+                     Terlihat oleh: koordinator, admin
+                ============================================================ --}}
+                @canany(['absensi.view-unit', 'absensi.view-all'])
                 <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('pjlp.*') ? 'active' : '' }}" href="{{ route('pjlp.index') }}">
-                        <span class="nav-link-icon d-md-none d-lg-inline-block">
-                            <i class="ti ti-users"></i>
-                        </span>
-                        <span class="nav-link-title">Data PJLP Unit</span>
-                    </a>
+                    <div class="nav-link-title text-uppercase text-muted small px-3 pt-3 pb-1" style="font-size:0.7rem;letter-spacing:.08em;">
+                        Absensi
+                    </div>
                 </li>
-                @endcan
-
-                <!-- Absensi -->
-                @canany(['absensi.view-self', 'absensi.view-unit', 'absensi.view-all'])
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle {{ request()->routeIs('absensi.*') || request()->routeIs('tarik-absen.*') ? 'active' : '' }}" href="#navbar-absensi" data-bs-toggle="dropdown" data-bs-auto-close="false" role="button" aria-expanded="false">
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('absensi.rekap') ? 'active' : '' }}" href="{{ route('absensi.rekap') }}">
                         <span class="nav-link-icon d-md-none d-lg-inline-block">
                             <i class="ti ti-fingerprint"></i>
                         </span>
-                        <span class="nav-link-title">Absensi</span>
+                        <span class="nav-link-title">Rekap Absensi</span>
                     </a>
-                    <div class="dropdown-menu {{ request()->routeIs('absensi.*') || request()->routeIs('tarik-absen.*') ? 'show' : '' }}">
-                        <a class="dropdown-item {{ request()->routeIs('absensi.index') ? 'active' : '' }}" href="{{ route('absensi.index') }}">
-                            <i class="ti ti-list me-2"></i> Data Absensi
-                        </a>
-                        @can('absensi.view-all')
-                        <a class="dropdown-item {{ request()->routeIs('tarik-absen.*') ? 'active' : '' }}" href="{{ route('tarik-absen.index') }}">
-                            <i class="ti ti-cloud-download me-2"></i> Tarik dari Mesin
-                        </a>
-                        @endcan
-                    </div>
                 </li>
                 @endcanany
 
-                <!-- Pengajuan Cuti -->
+                {{-- ============================================================
+                     CUTI — section header hanya untuk koordinator/admin (bisa approve)
+                     PJLP hanya lihat item flat tanpa header
+                ============================================================ --}}
                 @canany(['cuti.create', 'cuti.view-unit', 'cuti.view-all'])
+                @if($isAdminOrKoordinator)
                 <li class="nav-item">
+                    <div class="nav-link-title text-uppercase text-muted small px-3 pt-3 pb-1" style="font-size:0.7rem;letter-spacing:.08em;">
+                        Cuti
+                    </div>
+                </li>
+                @endif
+                <li class="nav-item">
+                    @can('cuti.approve')
+                    @php $pendingCuti = \App\Models\Cuti::pending()->count(); @endphp
+                    @endcan
                     <a class="nav-link {{ request()->routeIs('cuti.*') ? 'active' : '' }}" href="{{ route('cuti.index') }}">
                         <span class="nav-link-icon d-md-none d-lg-inline-block">
                             <i class="ti ti-plane-departure"></i>
                         </span>
-                        <span class="nav-link-title">Pengajuan Cuti</span>
-                        @can('cuti.approve')
-                        @php
-                            $pendingCuti = \App\Models\Cuti::pending()->count();
-                        @endphp
-                        @if($pendingCuti > 0)
-                        <span class="badge badge-sm bg-red text-red-fg ms-auto">{{ $pendingCuti }}</span>
+                        <span class="nav-link-title">{{ $isAdminOrKoordinator ? 'Pengajuan Cuti' : 'Cuti Saya' }}</span>
+                        @if(!empty($pendingCuti) && $pendingCuti > 0)
+                        <span class="badge badge-sm bg-red ms-auto">{{ $pendingCuti }}</span>
                         @endif
-                        @endcan
                     </a>
                 </li>
                 @endcanany
 
-                <!-- Lembar Kerja -->
-                @php
-                    $currentUserId = auth()->id();
-                    $userPjlp = \App\Models\Pjlp::where('user_id', $currentUserId)->first();
-                    $userUnit = $userPjlp?->unit;
-                    $isCleaningPjlp = $userPjlp && $userUnit === \App\Enums\UnitType::CLEANING;
-                    $isSecurityPjlp = $userPjlp && $userUnit === \App\Enums\UnitType::SECURITY;
-                    $isAdminOrKoordinator = auth()->user()->hasAnyRole(['admin', 'koordinator', 'manajemen']);
-                @endphp
-
-                {{-- Menu Lembar Kerja (Security) - HIDDEN/DISABLED
-                @if($isSecurityPjlp || $isAdminOrKoordinator)
-                @canany(['lembar-kerja.create', 'lembar-kerja.view-unit', 'lembar-kerja.view-all'])
+                {{-- ============================================================
+                     CLEANING SERVICE
+                     Tampil untuk: admin, koordinator unit cleaning/all, PJLP cleaning
+                ============================================================ --}}
+                @if($showCs || $isCleaningPjlp)
                 <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('lembar-kerja.*') && !request()->routeIs('lembar-kerja-cs.*') ? 'active' : '' }}" href="{{ route('lembar-kerja.index') }}">
-                        <span class="nav-link-icon d-md-none d-lg-inline-block">
-                            <i class="ti ti-clipboard-list"></i>
-                        </span>
-                        <span class="nav-link-title">Lembar Kerja</span>
-                        @can('lembar-kerja.validate')
-                        @php
-                            $pendingLK = \App\Models\LembarKerja::pending()->count();
-                        @endphp
-                        @if($pendingLK > 0)
-                        <span class="badge badge-sm bg-red text-red-fg ms-auto">{{ $pendingLK }}</span>
-                        @endif
-                        @endcan
-                    </a>
+                    <div class="nav-link-title text-uppercase text-muted small px-3 pt-3 pb-1" style="font-size:0.7rem;letter-spacing:.08em;">
+                        Cleaning Service
+                    </div>
                 </li>
-                @endcanany
                 @endif
-                --}}
 
-                <!-- Lembar Kerja CS (Cleaning Service) - untuk semua PJLP dengan unit cleaning -->
-                @if($isCleaningPjlp)
+                @if($showCs)
+                    @php
+                        $pendingLkCs = \App\Models\LembarKerjaCs::byStatus('submitted')->count();
+                        $isJadwalCsActive = request()->routeIs('jadwal-shift-cs.*') || request()->routeIs('jadwal-kerja-cs-bulanan.*');
+                    @endphp
+
+                    @can('jadwal-cs.manage')
+                    <li class="nav-item">
+                        <a class="nav-link {{ $isJadwalCsActive ? 'active' : '' }}" href="{{ route('jadwal-shift-cs.index') }}">
+                            <span class="nav-link-icon d-md-none d-lg-inline-block">
+                                <i class="ti ti-calendar-stats"></i>
+                            </span>
+                            <span class="nav-link-title">Jadwal CS</span>
+                        </a>
+                    </li>
+                    @endcan
+
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('lembar-kerja-cs.*') ? 'active' : '' }}" href="{{ route('lembar-kerja-cs.index') }}">
+                            <span class="nav-link-icon d-md-none d-lg-inline-block">
+                                <i class="ti ti-file-text"></i>
+                            </span>
+                            <span class="nav-link-title">Lembar Kerja CS</span>
+                            @if($pendingLkCs > 0)
+                            <span class="badge badge-sm bg-warning ms-auto">{{ $pendingLkCs }}</span>
+                            @endif
+                        </a>
+                    </li>
+
+                    {{-- Logbook Limbah: koordinator lihat rekap --}}
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('logbook-limbah.*') ? 'active' : '' }}" href="{{ route('logbook-limbah.rekap') }}">
+                            <span class="nav-link-icon d-md-none d-lg-inline-block">
+                                <i class="ti ti-file-invoice"></i>
+                            </span>
+                            <span class="nav-link-title">Rekap Logbook Limbah Domestik</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('logbook-b3.*') ? 'active' : '' }}" href="{{ route('logbook-b3.rekap') }}">
+                            <span class="nav-link-icon d-md-none d-lg-inline-block">
+                                <i class="ti ti-biohazard"></i>
+                            </span>
+                            <span class="nav-link-title">Rekap Logbook Limbah B3</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('logbook-hepafilter.*') ? 'active' : '' }}" href="{{ route('logbook-hepafilter.rekap') }}">
+                            <span class="nav-link-icon d-md-none d-lg-inline-block">
+                                <i class="ti ti-filter"></i>
+                            </span>
+                            <span class="nav-link-title">Rekap Cleaning Hepafilter</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('logbook-dekontaminasi.*') ? 'active' : '' }}" href="{{ route('logbook-dekontaminasi.rekap') }}">
+                            <span class="nav-link-icon d-md-none d-lg-inline-block">
+                                <i class="ti ti-wind"></i>
+                            </span>
+                            <span class="nav-link-title">Rekap Dekontaminasi</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('logbook-bank-sampah.*') ? 'active' : '' }}" href="{{ route('logbook-bank-sampah.rekap') }}">
+                            <span class="nav-link-icon d-md-none d-lg-inline-block">
+                                <i class="ti ti-recycle"></i>
+                            </span>
+                            <span class="nav-link-title">Rekap Bank Sampah</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('gerakan-jumat-sehat.*') ? 'active' : '' }}" href="{{ route('gerakan-jumat-sehat.rekap') }}">
+                            <span class="nav-link-icon d-md-none d-lg-inline-block">
+                                <i class="ti ti-heartbeat"></i>
+                            </span>
+                            <span class="nav-link-title">Rekap Jumat Sehat</span>
+                        </a>
+                    </li>
+
+                @elseif($isCleaningPjlp)
                 <li class="nav-item">
                     <a class="nav-link {{ request()->routeIs('lembar-kerja-cs.*') ? 'active' : '' }}" href="{{ route('lembar-kerja-cs.index') }}">
                         <span class="nav-link-icon d-md-none d-lg-inline-block">
-                            <i class="ti ti-spray"></i>
+                            <i class="ti ti-file-text"></i>
                         </span>
-                        <span class="nav-link-title">Cleaning Service</span>
+                        <span class="nav-link-title">Lembar Kerja Saya</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('logbook-limbah.*') ? 'active' : '' }}" href="{{ route('logbook-limbah.index') }}">
+                        <span class="nav-link-icon d-md-none d-lg-inline-block">
+                            <i class="ti ti-file-invoice"></i>
+                        </span>
+                        <span class="nav-link-title">Logbook Limbah Domestik</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('logbook-b3.*') ? 'active' : '' }}" href="{{ route('logbook-b3.index') }}">
+                        <span class="nav-link-icon d-md-none d-lg-inline-block">
+                            <i class="ti ti-biohazard"></i>
+                        </span>
+                        <span class="nav-link-title">Logbook Limbah B3</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('logbook-hepafilter.*') ? 'active' : '' }}" href="{{ route('logbook-hepafilter.index') }}">
+                        <span class="nav-link-icon d-md-none d-lg-inline-block">
+                            <i class="ti ti-filter"></i>
+                        </span>
+                        <span class="nav-link-title">Cleaning Hepafilter</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('logbook-dekontaminasi.*') ? 'active' : '' }}" href="{{ route('logbook-dekontaminasi.index') }}">
+                        <span class="nav-link-icon d-md-none d-lg-inline-block">
+                            <i class="ti ti-wind"></i>
+                        </span>
+                        <span class="nav-link-title">Dekontaminasi</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('logbook-bank-sampah.*') ? 'active' : '' }}" href="{{ route('logbook-bank-sampah.index') }}">
+                        <span class="nav-link-icon d-md-none d-lg-inline-block">
+                            <i class="ti ti-recycle"></i>
+                        </span>
+                        <span class="nav-link-title">Logbook Bank Sampah</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('gerakan-jumat-sehat.*') ? 'active' : '' }}" href="{{ route('gerakan-jumat-sehat.index') }}">
+                        <span class="nav-link-icon d-md-none d-lg-inline-block">
+                            <i class="ti ti-heartbeat"></i>
+                        </span>
+                        <span class="nav-link-title">Jumat Sehat</span>
                     </a>
                 </li>
                 @endif
 
-                <!-- Lembar Kerja CS (Cleaning Service) - untuk Admin/Koordinator -->
-                @if($isAdminOrKoordinator)
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle {{ request()->routeIs('lembar-kerja-cs.*') || request()->routeIs('jadwal-kerja-cs-bulanan.*') || request()->routeIs('jadwal-shift-cs.*') ? 'active' : '' }}" href="#navbar-lkcs" data-bs-toggle="dropdown" data-bs-auto-close="false" role="button" aria-expanded="false">
-                        <span class="nav-link-icon d-md-none d-lg-inline-block">
-                            <i class="ti ti-spray"></i>
-                        </span>
-                        <span class="nav-link-title">Cleaning Service</span>
-                        @can('lembar-kerja.validate')
-                        @php
-                            $pendingLKCS = \App\Models\LembarKerjaCs::where('status', 'submitted')->count();
-                        @endphp
-                        @if($pendingLKCS > 0)
-                        <span class="badge badge-sm bg-warning text-warning-fg ms-2">{{ $pendingLKCS }}</span>
-                        @endif
-                        @endcan
-                    </a>
-                    <div class="dropdown-menu {{ request()->routeIs('lembar-kerja-cs.*') || request()->routeIs('jadwal-kerja-cs-bulanan.*') || request()->routeIs('jadwal-shift-cs.*') || request()->routeIs('master-pekerjaan-cs.*') ? 'show' : '' }}">
-                        {{-- Menu untuk Koordinator: Input Data --}}
-                        @can('jadwal.manage')
-                        <div class="dropdown-header">Input Data</div>
-                        <a class="dropdown-item {{ request()->routeIs('jadwal-shift-cs.index') || request()->routeIs('jadwal-shift-cs.rekap') ? 'active' : '' }}" href="{{ route('jadwal-shift-cs.index') }}">
-                            <i class="ti ti-calendar me-2"></i> Input Jadwal Shift
-                        </a>
-                        <a class="dropdown-item {{ request()->routeIs('jadwal-kerja-cs-bulanan.*') ? 'active' : '' }}" href="{{ route('jadwal-kerja-cs-bulanan.index') }}">
-                            <i class="ti ti-clipboard-list me-2"></i> Input Pekerjaan Harian
-                        </a>
-                        <div class="dropdown-divider"></div>
-                        <div class="dropdown-header">Master Data</div>
-                        <a class="dropdown-item {{ request()->routeIs('master-pekerjaan-cs.*') ? 'active' : '' }}" href="{{ route('master-pekerjaan-cs.index') }}">
-                            <i class="ti ti-list-details me-2"></i> Master Pekerjaan
-                        </a>
-                        <div class="dropdown-divider"></div>
-                        @endcan
-
-                        {{-- Menu untuk Koordinator: Lembar Kerja --}}
-                        <div class="dropdown-header">Lembar Kerja</div>
-                        <a class="dropdown-item {{ request()->routeIs('lembar-kerja-cs.index') ? 'active' : '' }}" href="{{ route('lembar-kerja-cs.index') }}">
-                            <i class="ti ti-list me-2"></i> Lihat Lembar Kerja
-                        </a>
-                        @can('lembar-kerja.validate')
-                        <a class="dropdown-item {{ request()->routeIs('lembar-kerja-cs.validasi-bukti-index') ? 'active' : '' }}" href="{{ route('lembar-kerja-cs.validasi-bukti-index') }}">
-                            <i class="ti ti-checkbox me-2"></i> Validasi Bukti
-                            @php
-                                $pendingBuktiCs = \App\Models\BuktiPekerjaanCs::where('is_completed', true)
-                                    ->where('is_validated', false)
-                                    ->where('is_rejected', false)
-                                    ->count();
-                            @endphp
-                            @if($pendingBuktiCs > 0)
-                                <span class="badge bg-warning text-warning-fg ms-auto">{{ $pendingBuktiCs }}</span>
-                            @endif
-                        </a>
-                        @endcan
+                {{-- ============================================================
+                     SECURITY
+                     Tampil untuk: admin, koordinator unit security/all, PJLP security
+                     (modul masih on progress — placeholder)
+                ============================================================ --}}
+                @if($showSecurity || $isSecurityPjlp)
+                <li class="nav-item">
+                    <div class="nav-link-title text-uppercase text-muted small px-3 pt-3 pb-1" style="font-size:0.7rem;letter-spacing:.08em;">
+                        Security
                     </div>
                 </li>
+                @if($showSecurity)
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('jadwal-security.*') ? 'active' : '' }}" href="{{ route('jadwal-security.index') }}">
+                        <span class="nav-link-icon d-md-none d-lg-inline-block">
+                            <i class="ti ti-calendar-stats"></i>
+                        </span>
+                        <span class="nav-link-title">Jadwal Security</span>
+                    </a>
+                </li>
+                @endif
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('patrol-inspeksi.*') ? 'active' : '' }}"
+                       href="{{ $showSecurity ? route('patrol-inspeksi.rekap') : route('patrol-inspeksi.index') }}">
+                        <span class="nav-link-icon d-md-none d-lg-inline-block">
+                            <i class="ti ti-shield-check"></i>
+                        </span>
+                        <span class="nav-link-title">
+                            {{ $showSecurity ? 'Rekap Security Patrol' : 'Laporan Patrol' }}
+                        </span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('pengawasan-proyek.*') ? 'active' : '' }}"
+                       href="{{ $showSecurity ? route('pengawasan-proyek.rekap') : route('pengawasan-proyek.index') }}">
+                        <span class="nav-link-icon d-md-none d-lg-inline-block">
+                            <i class="ti ti-building-factory-2"></i>
+                        </span>
+                        <span class="nav-link-title">
+                            {{ $showSecurity ? 'Rekap Pengawasan Proyek' : 'Pengawasan Proyek' }}
+                        </span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('pengecekan-apar.*') ? 'active' : '' }}"
+                       href="{{ $showSecurity ? route('pengecekan-apar.rekap') : route('pengecekan-apar.index') }}">
+                        <span class="nav-link-icon d-md-none d-lg-inline-block">
+                            <i class="ti ti-fire-extinguisher"></i>
+                        </span>
+                        <span class="nav-link-title">
+                            {{ $showSecurity ? 'Rekap APAR & APAB' : 'Pengecekan APAR & APAB' }}
+                        </span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('inspeksi-hydrant.index') || request()->routeIs('inspeksi-hydrant.store') || request()->routeIs('inspeksi-hydrant.show') || request()->routeIs('inspeksi-hydrant.rekap') ? 'active' : '' }}"
+                       href="{{ $showSecurity ? route('inspeksi-hydrant.rekap') : route('inspeksi-hydrant.index') }}">
+                        <span class="nav-link-icon d-md-none d-lg-inline-block">
+                            <i class="ti ti-flame"></i>
+                        </span>
+                        <span class="nav-link-title">
+                            {{ $showSecurity ? 'Rekap Hydrant Outdoor' : 'Hydrant Outdoor' }}
+                        </span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('inspeksi-hydrant-indoor.*') ? 'active' : '' }}"
+                       href="{{ $showSecurity ? route('inspeksi-hydrant-indoor.rekap') : route('inspeksi-hydrant-indoor.index') }}">
+                        <span class="nav-link-icon d-md-none d-lg-inline-block">
+                            <i class="ti ti-flame-off"></i>
+                        </span>
+                        <span class="nav-link-title">
+                            {{ $showSecurity ? 'Rekap Hydrant Indoor' : 'Hydrant Indoor' }}
+                        </span>
+                    </a>
+                </li>
+                @if($isSecurityPjlp)
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('gerakan-jumat-sehat.*') ? 'active' : '' }}" href="{{ route('gerakan-jumat-sehat.index') }}">
+                        <span class="nav-link-icon d-md-none d-lg-inline-block">
+                            <i class="ti ti-heartbeat"></i>
+                        </span>
+                        <span class="nav-link-title">Jumat Sehat</span>
+                    </a>
+                </li>
+                @endif
+                @if($showSecurity)
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('gerakan-jumat-sehat.rekap') ? 'active' : '' }}" href="{{ route('gerakan-jumat-sehat.rekap') }}">
+                        <span class="nav-link-icon d-md-none d-lg-inline-block">
+                            <i class="ti ti-heartbeat"></i>
+                        </span>
+                        <span class="nav-link-title">Rekap Jumat Sehat</span>
+                    </a>
+                </li>
+                @endif
                 @endif
 
-                <!-- Laporan -->
+                {{-- ============================================================
+                     K3 — Laporan Kecelakaan Kerja
+                     Terlihat oleh: semua user (form), rekap untuk admin/koordinator
+                ============================================================ --}}
+                <li class="nav-item">
+                    <div class="nav-link-title text-uppercase text-muted small px-3 pt-3 pb-1" style="font-size:0.7rem;letter-spacing:.08em;">
+                        K3
+                    </div>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('laporan-kecelakaan.index') || request()->routeIs('laporan-kecelakaan.show') ? 'active' : '' }}"
+                       href="{{ route('laporan-kecelakaan.index') }}">
+                        <span class="nav-link-icon d-md-none d-lg-inline-block">
+                            <i class="ti ti-alert-triangle"></i>
+                        </span>
+                        <span class="nav-link-title">Laporan Kecelakaan</span>
+                    </a>
+                </li>
                 @can('laporan.view')
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle {{ request()->routeIs('laporan.*') ? 'active' : '' }}" href="#navbar-laporan" data-bs-toggle="dropdown" data-bs-auto-close="false" role="button" aria-expanded="false">
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('laporan-kecelakaan.rekap') ? 'active' : '' }}"
+                       href="{{ route('laporan-kecelakaan.rekap') }}">
                         <span class="nav-link-icon d-md-none d-lg-inline-block">
-                            <i class="ti ti-report-analytics"></i>
+                            <i class="ti ti-report-medical"></i>
                         </span>
-                        <span class="nav-link-title">Laporan</span>
+                        <span class="nav-link-title">Rekap K3</span>
                     </a>
-                    <div class="dropdown-menu {{ request()->routeIs('laporan.*') ? 'show' : '' }}">
-                        <a class="dropdown-item" href="{{ route('laporan.absensi') }}">Rekap Absensi</a>
-                        <a class="dropdown-item" href="{{ route('laporan.cuti') }}">Rekap Cuti</a>
-                    </div>
                 </li>
                 @endcan
 
-                <!-- Master Data -->
+                {{-- ============================================================
+                     SECTION: LAPORAN
+                     Terlihat oleh: koordinator, admin, manajemen
+                ============================================================ --}}
+                @can('laporan.view')
+                <li class="nav-item">
+                    <div class="nav-link-title text-uppercase text-muted small px-3 pt-3 pb-1" style="font-size:0.7rem;letter-spacing:.08em;">
+                        Laporan
+                    </div>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('laporan.cuti') ? 'active' : '' }}" href="{{ route('laporan.cuti') }}">
+                        <span class="nav-link-icon d-md-none d-lg-inline-block">
+                            <i class="ti ti-report-analytics"></i>
+                        </span>
+                        <span class="nav-link-title">Rekap Cuti</span>
+                    </a>
+                </li>
+                @endcan
+
+                {{-- ============================================================
+                     SECTION: ADMINISTRASI
+                     Terlihat oleh: admin saja
+                ============================================================ --}}
+                @canany(['master.manage', 'user.manage', 'audit-log.view', 'jadwal.manage', 'jadwal-cs.manage'])
+                <li class="nav-item">
+                    <div class="nav-link-title text-uppercase text-muted small px-3 pt-3 pb-1" style="font-size:0.7rem;letter-spacing:.08em;">
+                        Administrasi
+                    </div>
+                </li>
                 @can('master.manage')
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle {{ request()->routeIs('master.*') ? 'active' : '' }}" href="#navbar-master" data-bs-toggle="dropdown" data-bs-auto-close="false" role="button" aria-expanded="false">
+                    <a class="nav-link dropdown-toggle {{ request()->routeIs('master.*') || request()->routeIs('master-pekerjaan-cs.*') ? 'active' : '' }}"
+                       href="#navbar-master" data-bs-toggle="dropdown" data-bs-auto-close="false" role="button" aria-expanded="false">
                         <span class="nav-link-icon d-md-none d-lg-inline-block">
                             <i class="ti ti-database"></i>
                         </span>
                         <span class="nav-link-title">Master Data</span>
                     </a>
-                    <div class="dropdown-menu {{ request()->routeIs('master.*') ? 'show' : '' }}">
-                        <a class="dropdown-item" href="{{ route('master.shift.index') }}">Shift</a>
-                        <a class="dropdown-item" href="{{ route('master.jenis-cuti.index') }}">Jenis Cuti</a>
-                        <a class="dropdown-item" href="{{ route('master.lokasi.index') }}">Lokasi</a>
-                        <a class="dropdown-item" href="{{ route('master.area-cs.index') }}">Area CS</a>
+                    <div class="dropdown-menu {{ request()->routeIs('master.*') || request()->routeIs('master-pekerjaan-cs.*') ? 'show' : '' }}">
+                        <a class="dropdown-item {{ request()->routeIs('master.shift.*') ? 'active' : '' }}" href="{{ route('master.shift.index') }}">
+                            <i class="ti ti-clock me-2"></i> Shift
+                        </a>
+                        <a class="dropdown-item {{ request()->routeIs('master.jenis-cuti.*') ? 'active' : '' }}" href="{{ route('master.jenis-cuti.index') }}">
+                            <i class="ti ti-plane me-2"></i> Jenis Cuti
+                        </a>
+                        <a class="dropdown-item {{ request()->routeIs('master.lokasi.*') ? 'active' : '' }}" href="{{ route('master.lokasi.index') }}">
+                            <i class="ti ti-map-pin me-2"></i> Lokasi Security
+                        </a>
+                        <a class="dropdown-item {{ request()->routeIs('master.area-cs.*') ? 'active' : '' }}" href="{{ route('master.area-cs.index') }}">
+                            <i class="ti ti-map me-2"></i> Area CS
+                        </a>
+                        <a class="dropdown-item {{ request()->routeIs('master-pekerjaan-cs.*') ? 'active' : '' }}" href="{{ route('master-pekerjaan-cs.index') }}">
+                            <i class="ti ti-tools me-2"></i> Pekerjaan CS
+                        </a>
+                        <a class="dropdown-item {{ request()->routeIs('master.kegiatan-lk-cs.*') ? 'active' : '' }}" href="{{ route('master.kegiatan-lk-cs.index') }}">
+                            <i class="ti ti-list-check me-2"></i> Kegiatan LK CS
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        <a class="dropdown-item {{ request()->routeIs('master.app-settings.*') ? 'active' : '' }}" href="{{ route('master.app-settings.index') }}">
+                            <i class="ti ti-settings me-2"></i> Pengaturan Sistem
+                        </a>
                     </div>
                 </li>
                 @endcan
-
-                <!-- Audit Log -->
+                @cannot('master.manage')
+                @if($showSecurity && auth()->user()->can('jadwal.manage'))
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('master.lokasi.*') ? 'active' : '' }}" href="{{ route('master.lokasi.index') }}">
+                        <span class="nav-link-icon d-md-none d-lg-inline-block">
+                            <i class="ti ti-map-pin"></i>
+                        </span>
+                        <span class="nav-link-title">Lokasi Security</span>
+                    </a>
+                </li>
+                @endif
+                @if($showCs && auth()->user()->can('jadwal-cs.manage'))
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('master.area-cs.*') ? 'active' : '' }}" href="{{ route('master.area-cs.index') }}">
+                        <span class="nav-link-icon d-md-none d-lg-inline-block">
+                            <i class="ti ti-map"></i>
+                        </span>
+                        <span class="nav-link-title">Area CS</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('master.kegiatan-lk-cs.*') ? 'active' : '' }}" href="{{ route('master.kegiatan-lk-cs.index') }}">
+                        <span class="nav-link-icon d-md-none d-lg-inline-block">
+                            <i class="ti ti-list-check"></i>
+                        </span>
+                        <span class="nav-link-title">Kegiatan LK CS</span>
+                    </a>
+                </li>
+                @endif
+                @endcannot
+                @can('user.manage')
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('users.*') ? 'active' : '' }}" href="{{ route('users.index') }}">
+                        <span class="nav-link-icon d-md-none d-lg-inline-block">
+                            <i class="ti ti-user-cog"></i>
+                        </span>
+                        <span class="nav-link-title">Manajemen User</span>
+                    </a>
+                </li>
+                @endcan
                 @can('audit-log.view')
                 <li class="nav-item">
                     <a class="nav-link {{ request()->routeIs('audit-log.*') ? 'active' : '' }}" href="{{ route('audit-log.index') }}">
@@ -253,22 +568,24 @@
                     </a>
                 </li>
                 @endcan
+                @endcanany
 
+                {{-- ============================================================
+                     PROFIL & LOGOUT
+                ============================================================ --}}
                 <li class="nav-item mt-auto">
                     <hr class="dropdown-divider my-2">
                 </li>
-
-                <!-- User Profile -->
                 <li class="nav-item dropdown">
                     <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" data-bs-auto-close="false" role="button" aria-expanded="false">
                         <span class="nav-link-icon d-md-none d-lg-inline-block">
-                            <span class="avatar avatar-xs" style="background-image: url(https://ui-avatars.com/api/?name={{ urlencode(auth()->user()->name) }}&background=206bc4&color=fff)"></span>
+                            <span class="avatar avatar-xs" style="background-image: url(https://ui-avatars.com/api/?name={{ urlencode($user->name) }}&background=206bc4&color=fff)"></span>
                         </span>
-                        <span class="nav-link-title">{{ auth()->user()->name }}</span>
+                        <span class="nav-link-title">{{ $user->name }}</span>
                     </a>
                     <div class="dropdown-menu">
                         <a class="dropdown-item" href="{{ route('profile.edit') }}">
-                            <i class="ti ti-user me-2"></i> Profil
+                            <i class="ti ti-user me-2"></i> Profil Saya
                         </a>
                         <div class="dropdown-divider"></div>
                         <form method="POST" action="{{ route('logout') }}">
@@ -279,6 +596,7 @@
                         </form>
                     </div>
                 </li>
+
             </ul>
         </div>
     </div>

@@ -19,12 +19,14 @@ class JadwalShiftCs extends Model
         'shift_id',
         'status',
         'keterangan',
+        'is_published',
         'created_by',
         'updated_by',
     ];
 
     protected $casts = [
-        'tanggal' => 'date',
+        'tanggal'      => 'date',
+        'is_published' => 'boolean',
     ];
 
     // Status constants

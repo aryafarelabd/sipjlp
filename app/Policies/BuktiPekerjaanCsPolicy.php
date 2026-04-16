@@ -27,6 +27,10 @@ class BuktiPekerjaanCsPolicy
         }
 
         if ($user->can('lembar-kerja-cs.view-self')) {
+            // Jadwal umum (pjlp_id null) boleh diupload siapa saja
+            if (is_null($jadwal->pjlp_id)) {
+                return true;
+            }
             return $jadwal->pjlp_id === $user->pjlp?->id;
         }
 

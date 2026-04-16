@@ -6,27 +6,19 @@
 <div class="page-header d-print-none">
     <div class="container-xl">
         <div class="row g-2 align-items-center">
-            <div class="col">
-                <a href="{{ route('lembar-kerja-cs.index') }}" class="btn btn-outline-secondary btn-sm mb-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l14 0" /><path d="M5 12l6 6" /><path d="M5 12l6 -6" /></svg>
-                    Kembali
+            <div class="col-auto">
+                <a href="{{ route('lembar-kerja-cs.index') }}" class="btn btn-ghost-secondary btn-sm">
+                    <i class="ti ti-arrow-left me-1"></i>Kembali
                 </a>
-                <h2 class="page-title">Detail Lembar Kerja CS</h2>
-                <div class="text-muted mt-1">
-                    {{ $lembarKerja->area->nama }} | {{ $lembarKerja->tanggal->format('d F Y') }} | Shift {{ ucfirst($lembarKerja->shift) }}
-                </div>
             </div>
-            <div class="col-auto ms-auto d-print-none">
-                @if($lembarKerja->canEdit())
-                <a href="{{ route('lembar-kerja-cs.edit', $lembarKerja->id) }}" class="btn btn-warning">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M7 7h-1a2 2 0 0 0 -2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2 -2v-1" /><path d="M20.385 6.585a2.1 2.1 0 0 0 -2.97 -2.97l-8.415 8.385v3h3l8.385 -8.415z" /><path d="M16 5l3 3" /></svg>
-                    Edit
-                </a>
-                @endif
-                <button class="btn btn-secondary" onclick="window.print()">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M17 17h2a2 2 0 0 0 2 -2v-4a2 2 0 0 0 -2 -2h-14a2 2 0 0 0 -2 2v4a2 2 0 0 0 2 2h2" /><path d="M17 9v-4a2 2 0 0 0 -2 -2h-6a2 2 0 0 0 -2 2v4" /><path d="M7 13m0 2a2 2 0 0 1 2 -2h6a2 2 0 0 1 2 2v4a2 2 0 0 1 -2 2h-6a2 2 0 0 1 -2 -2z" /></svg>
-                    Cetak
-                </button>
+            <div class="col">
+                <div class="page-pretitle">Cleaning Service</div>
+                <h2 class="page-title">Detail Lembar Kerja CS</h2>
+            </div>
+            <div class="col-auto">
+                <span class="badge bg-{{ $lembarKerjaC->status_color }} fs-6">
+                    {{ $lembarKerjaC->status_label }}
+                </span>
             </div>
         </div>
     </div>
@@ -34,212 +26,190 @@
 
 <div class="page-body">
     <div class="container-xl">
+
         @if(session('success'))
-        <div class="alert alert-success alert-dismissible" role="alert">
-            {{ session('success') }}
-            <a class="btn-close" data-bs-dismiss="alert" aria-label="close"></a>
+        <div class="alert alert-success alert-dismissible">
+            <i class="ti ti-circle-check me-2"></i>{{ session('success') }}
+            <a class="btn-close" data-bs-dismiss="alert"></a>
         </div>
         @endif
 
-        @if(session('warning'))
-        <div class="alert alert-warning alert-dismissible" role="alert">
-            {{ session('warning') }}
-            <a class="btn-close" data-bs-dismiss="alert" aria-label="close"></a>
-        </div>
-        @endif
+        <div class="row g-3">
+            <div class="col-lg-8">
 
-        @if($errors->any())
-        <div class="alert alert-danger">
-            <ul class="mb-0">
-                @foreach($errors->all() as $error)
-                <li>{{ $error }}</li>
-                @endforeach
-            </ul>
-        </div>
-        @endif
-
-        <!-- Info Card -->
-        <div class="card mb-3">
-            <div class="card-header">
-                <h3 class="card-title">Informasi Lembar Kerja</h3>
-                <div class="card-actions">
-                    <span class="badge text-white bg-{{ $lembarKerja->status_color }} fs-5">{{ $lembarKerja->status_label }}</span>
-                </div>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-3 mb-3">
-                        <strong>PJLP:</strong><br>
-                        {{ $lembarKerja->pjlp->nama ?? '-' }}<br>
-                        <small class="text-muted">{{ $lembarKerja->pjlp->nip ?? '' }}</small>
-                    </div>
-                    <div class="col-md-3 mb-3">
-                        <strong>Area:</strong><br>
-                        <span class="badge bg-blue-lt">{{ $lembarKerja->area->kode }}</span>
-                        {{ $lembarKerja->area->nama }}
-                    </div>
-                    <div class="col-md-3 mb-3">
-                        <strong>Tanggal:</strong><br>
-                        {{ $lembarKerja->tanggal->format('d F Y') }}<br>
-                        <small class="text-muted">{{ $lembarKerja->tanggal->translatedFormat('l') }}</small>
-                    </div>
-                    <div class="col-md-3 mb-3">
-                        <strong>Shift:</strong><br>
-                        <span class="badge text-white bg-azure">{{ $lembarKerja->shift->nama ?? '-' }}</span>
-                        @if($lembarKerja->shift)
-                        <small class="d-block text-muted">{{ $lembarKerja->shift->jam_masuk }} - {{ $lembarKerja->shift->jam_keluar }}</small>
-                        @endif
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="col-md-3 mb-3">
-                        <strong>Progress:</strong><br>
-                        <div class="progress mt-1" style="height: 20px;">
-                            <div class="progress-bar bg-success" style="width: {{ $lembarKerja->completion_percentage }}%">
-                                {{ $lembarKerja->completion_percentage }}%
+                {{-- Header Info --}}
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-sm-3">
+                                <div class="text-muted small">Petugas</div>
+                                <div class="fw-medium">{{ $lembarKerjaC->pjlp->nama ?? '-' }}</div>
+                            </div>
+                            <div class="col-sm-3">
+                                <div class="text-muted small">Tanggal</div>
+                                <div class="fw-medium">{{ $lembarKerjaC->tanggal->translatedFormat('d F Y') }}</div>
+                            </div>
+                            <div class="col-sm-3">
+                                <div class="text-muted small">Area</div>
+                                <div class="fw-medium">{{ $lembarKerjaC->area->nama ?? '-' }}</div>
+                            </div>
+                            <div class="col-sm-3">
+                                <div class="text-muted small">Shift</div>
+                                <div class="fw-medium">{{ $lembarKerjaC->shift->nama ?? '-' }}</div>
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-3 mb-3">
-                        <strong>Dibuat:</strong><br>
-                        {{ $lembarKerja->created_at->format('d/m/Y H:i') }}
-                    </div>
-                    @if($lembarKerja->submitted_at)
-                    <div class="col-md-3 mb-3">
-                        <strong>Disubmit:</strong><br>
-                        {{ $lembarKerja->submitted_at->format('d/m/Y H:i') }}
-                    </div>
-                    @endif
-                    @if($lembarKerja->validated_at)
-                    <div class="col-md-3 mb-3">
-                        <strong>Divalidasi:</strong><br>
-                        {{ $lembarKerja->validated_at->format('d/m/Y H:i') }}<br>
-                        <small class="text-muted">oleh {{ $lembarKerja->validator->name ?? '-' }}</small>
-                    </div>
-                    @endif
                 </div>
-                @if($lembarKerja->catatan_pjlp)
-                <div class="row">
-                    <div class="col-12">
-                        <strong>Catatan PJLP:</strong><br>
-                        {{ $lembarKerja->catatan_pjlp }}
-                    </div>
-                </div>
-                @endif
-                @if($lembarKerja->catatan_koordinator)
-                <div class="row mt-2">
-                    <div class="col-12">
-                        <strong>Catatan Validasi:</strong><br>
-                        <div class="alert alert-{{ $lembarKerja->isValidated() ? 'success' : 'warning' }} mb-0 mt-1">
-                            {{ $lembarKerja->catatan_koordinator }}
+
+                {{-- Kegiatan Periodik --}}
+                <div class="card mb-3">
+                    <div class="card-header" style="background-color:#1a56db;">
+                        <h3 class="card-title text-white">
+                            <i class="ti ti-list-check me-2"></i>Kegiatan Periodik
+                        </h3>
+                        <div class="card-actions">
+                            <span class="badge bg-white text-dark">
+                                {{ count($lembarKerjaC->kegiatan_periodik ?? []) }} kegiatan
+                            </span>
                         </div>
                     </div>
+                    <div class="list-group list-group-flush">
+                        @forelse($lembarKerjaC->kegiatan_periodik ?? [] as $i => $kg)
+                        <div class="list-group-item">
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="badge bg-blue-lt text-blue rounded-pill">{{ $i + 1 }}</span>
+                                <span class="fw-medium">{{ $kg['nama'] ?? '-' }}</span>
+                            </div>
+                        </div>
+                        @empty
+                        <div class="list-group-item text-muted text-center py-3">Tidak ada data</div>
+                        @endforelse
+                    </div>
+                </div>
+
+                {{-- Kegiatan Extra Job --}}
+                @if(!empty($lembarKerjaC->kegiatan_extra_job))
+                <div class="card mb-3">
+                    <div class="card-header" style="background-color:#0ca678;">
+                        <h3 class="card-title text-white">
+                            <i class="ti ti-star me-2"></i>Kegiatan Extra Job
+                        </h3>
+                        <div class="card-actions">
+                            <span class="badge bg-white text-dark">
+                                {{ count($lembarKerjaC->kegiatan_extra_job) }} kegiatan
+                            </span>
+                        </div>
+                    </div>
+                    <div class="list-group list-group-flush">
+                        @foreach($lembarKerjaC->kegiatan_extra_job as $i => $kg)
+                        <div class="list-group-item">
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="badge bg-green-lt text-green rounded-pill">{{ $i + 1 }}</span>
+                                <span class="fw-medium">{{ $kg['nama'] ?? '-' }}</span>
+                            </div>
+                        </div>
+                        @endforeach
+                    </div>
                 </div>
                 @endif
-            </div>
-        </div>
 
-        <!-- Detail Checklist -->
-        <div class="card mb-3">
-            <div class="card-header">
-                <h3 class="card-title">Detail Checklist Aktivitas</h3>
-                <div class="card-actions">
-                    {{ $lembarKerja->details->where('is_completed', true)->count() }} / {{ $lembarKerja->details->count() }} selesai
+                {{-- Dokumentasi --}}
+                @if(!empty($lembarKerjaC->foto_dokumentasi) || $lembarKerjaC->deskripsi_foto || $lembarKerjaC->catatan)
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="ti ti-camera me-1"></i>Dokumentasi</h3>
+                    </div>
+                    <div class="card-body">
+                        @if($lembarKerjaC->deskripsi_foto)
+                        <div class="mb-3">
+                            <div class="text-muted small">Deskripsi Foto</div>
+                            <div>{{ $lembarKerjaC->deskripsi_foto }}</div>
+                        </div>
+                        @endif
+
+                        @if(!empty($lembarKerjaC->foto_dokumentasi))
+                        <div class="d-flex flex-wrap gap-3 mb-3">
+                            @foreach($lembarKerjaC->foto_dokumentasi as $i => $foto)
+                            <a href="{{ Storage::url($foto) }}" target="_blank" title="Foto {{ $i + 1 }}">
+                                <img src="{{ Storage::url($foto) }}"
+                                     alt="Foto {{ $i + 1 }}"
+                                     style="width:120px;height:120px;object-fit:cover;border-radius:8px;border:1px solid #dee2e6;">
+                            </a>
+                            @endforeach
+                        </div>
+                        @endif
+
+                        @if($lembarKerjaC->catatan)
+                        <div>
+                            <div class="text-muted small">Catatan</div>
+                            <div>{{ $lembarKerjaC->catatan }}</div>
+                        </div>
+                        @endif
+                    </div>
+                </div>
+                @endif
+
+                {{-- Catatan Koordinator --}}
+                @if($lembarKerjaC->catatan_koordinator)
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h3 class="card-title text-{{ $lembarKerjaC->isRejected() ? 'danger' : 'success' }}">
+                            <i class="ti ti-message me-1"></i>Catatan Koordinator
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-0">{{ $lembarKerjaC->catatan_koordinator }}</p>
+                        @if($lembarKerjaC->validated_at)
+                        <div class="text-muted small mt-2">
+                            {{ $lembarKerjaC->validator?->name }} —
+                            {{ $lembarKerjaC->validated_at->translatedFormat('d M Y H:i') }}
+                        </div>
+                        @endif
+                    </div>
+                </div>
+                @endif
+
+            </div>
+
+            {{-- ── Panel Aksi Koordinator ── --}}
+            @if($lembarKerjaC->canValidate() && auth()->user()->hasAnyRole(['koordinator','admin']))
+            <div class="col-lg-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Aksi Koordinator</h3>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" action="{{ route('lembar-kerja-cs.validate', $lembarKerjaC) }}" class="mb-3">
+                            @csrf
+                            <div class="mb-2">
+                                <label class="form-label">Catatan (opsional)</label>
+                                <textarea name="catatan_koordinator" class="form-control form-control-sm" rows="2"
+                                          placeholder="Catatan validasi..."></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-success w-100"
+                                    onclick="return confirm('Validasi lembar kerja ini?')">
+                                <i class="ti ti-check me-1"></i>Validasi
+                            </button>
+                        </form>
+                        <hr>
+                        <form method="POST" action="{{ route('lembar-kerja-cs.reject', $lembarKerjaC) }}">
+                            @csrf
+                            <div class="mb-2">
+                                <label class="form-label required">Alasan Penolakan</label>
+                                <textarea name="catatan_koordinator" class="form-control form-control-sm" rows="2"
+                                          placeholder="Jelaskan alasan penolakan..." required></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-danger w-100"
+                                    onclick="return confirm('Tolak lembar kerja ini?')">
+                                <i class="ti ti-x me-1"></i>Tolak
+                            </button>
+                        </form>
+                    </div>
                 </div>
             </div>
-            <div class="table-responsive">
-                <table class="table table-vcenter card-table">
-                    <thead>
-                        <tr>
-                            <th style="width: 50px;">#</th>
-                            <th>Aktivitas</th>
-                            <th>Kategori</th>
-                            <th>Status</th>
-                            <th>Waktu Selesai</th>
-                            <th>Foto</th>
-                            <th>Catatan</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse($lembarKerja->details as $index => $detail)
-                        <tr class="{{ $detail->is_completed ? 'table-success' : '' }}">
-                            <td>{{ $index + 1 }}</td>
-                            <td>
-                                <strong>{{ $detail->aktivitas->nama ?? '-' }}</strong>
-                                @if($detail->aktivitas->deskripsi)
-                                <br><small class="text-muted">{{ $detail->aktivitas->deskripsi }}</small>
-                                @endif
-                            </td>
-                            <td>
-                                <span class="badge bg-azure-lt">{{ ucfirst($detail->aktivitas->kategori ?? 'umum') }}</span>
-                            </td>
-                            <td>
-                                @if($detail->is_completed)
-                                <span class="badge text-white bg-success">Selesai</span>
-                                @else
-                                <span class="badge text-white bg-secondary">Belum</span>
-                                @endif
-                            </td>
-                            <td>
-                                {{ $detail->waktu_selesai ? $detail->waktu_selesai->format('H:i') : '-' }}
-                            </td>
-                            <td>
-                                @if($detail->foto_before || $detail->foto_after)
-                                <div class="d-flex gap-1">
-                                    @if($detail->foto_before)
-                                    <a href="{{ Storage::url($detail->foto_before) }}" target="_blank">
-                                        <img src="{{ Storage::url($detail->foto_before) }}" class="rounded" style="width: 40px; height: 40px; object-fit: cover;" alt="Before">
-                                    </a>
-                                    @endif
-                                    @if($detail->foto_after)
-                                    <a href="{{ Storage::url($detail->foto_after) }}" target="_blank">
-                                        <img src="{{ Storage::url($detail->foto_after) }}" class="rounded" style="width: 40px; height: 40px; object-fit: cover;" alt="After">
-                                    </a>
-                                    @endif
-                                </div>
-                                @else
-                                -
-                                @endif
-                            </td>
-                            <td>{{ $detail->catatan ?? '-' }}</td>
-                        </tr>
-                        @empty
-                        <tr>
-                            <td colspan="7" class="text-center text-muted">Tidak ada detail aktivitas</td>
-                        </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-        </div>
+            @endif
 
-        <!-- Validation Form (for Koordinator/Admin) -->
-        @if($lembarKerja->canValidate() && (auth()->user()->hasRole('admin') || auth()->user()->hasRole('koordinator')))
-        <div class="card">
-            <div class="card-header">
-                <h3 class="card-title">Validasi Lembar Kerja</h3>
-            </div>
-            <div class="card-body">
-                <form action="{{ route('lembar-kerja-cs.validate', $lembarKerja->id) }}" method="POST">
-                    @csrf
-                    <div class="mb-3">
-                        <label class="form-label">Catatan Validasi</label>
-                        <textarea name="notes" class="form-control" rows="3" placeholder="Catatan untuk PJLP (opsional)..."></textarea>
-                    </div>
-                    <div class="d-flex gap-2">
-                        <button type="submit" name="action" value="validate" class="btn btn-success" onclick="return confirm('Validasi lembar kerja ini?')">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10" /></svg>
-                            Validasi
-                        </button>
-                        <button type="submit" name="action" value="reject" class="btn btn-danger" onclick="return confirm('Tolak lembar kerja ini? PJLP harus mengisi ulang.')">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M18 6l-12 12" /><path d="M6 6l12 12" /></svg>
-                            Tolak
-                        </button>
-                    </div>
-                </form>
-            </div>
         </div>
-        @endif
     </div>
 </div>
 @endsection

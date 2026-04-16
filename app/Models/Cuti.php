@@ -16,6 +16,7 @@ class Cuti extends Model
 
     protected $fillable = [
         'pjlp_id',
+        'danru_id',
         'tanggal_permohonan',
         'jenis_cuti_id',
         'alasan',
@@ -24,6 +25,10 @@ class Cuti extends Model
         'tgl_selesai',
         'jumlah_hari',
         'status',
+        'approved_by_danru',
+        'approved_at_danru',
+        'approved_by_chief',
+        'approved_at_chief',
         'approved_by',
         'approved_at',
         'alasan_penolakan',
@@ -33,10 +38,12 @@ class Cuti extends Model
     {
         return [
             'tanggal_permohonan' => 'datetime',
-            'tgl_mulai' => 'date',
-            'tgl_selesai' => 'date',
-            'status' => StatusCuti::class,
-            'approved_at' => 'datetime',
+            'tgl_mulai'          => 'date',
+            'tgl_selesai'        => 'date',
+            'status'             => StatusCuti::class,
+            'approved_at_danru'  => 'datetime',
+            'approved_at_chief'  => 'datetime',
+            'approved_at'        => 'datetime',
         ];
     }
 
@@ -65,6 +72,21 @@ class Cuti extends Model
         return $this->belongsTo(JenisCuti::class);
     }
 
+    public function danru(): BelongsTo
+    {
+        return $this->belongsTo(Pjlp::class, 'danru_id');
+    }
+
+    public function approvedByDanru(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'approved_by_danru');
+    }
+
+    public function approvedByChief(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'approved_by_chief');
+    }
+
     public function approvedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'approved_by');
@@ -82,7 +104,12 @@ class Cuti extends Model
 
     public function scopePending($query)
     {
-        return $query->where('status', StatusCuti::MENUNGGU);
+        return $query->whereIn('status', [
+            StatusCuti::MENUNGGU,
+            StatusCuti::MENUNGGU_DANRU,
+            StatusCuti::MENUNGGU_CHIEF,
+            StatusCuti::MENUNGGU_KOORDINATOR,
+        ]);
     }
 
     public function scopeApproved($query)
@@ -92,13 +119,31 @@ class Cuti extends Model
 
     public function canBeEdited(): bool
     {
-        return $this->status === StatusCuti::MENUNGGU;
+        return $this->status->isPending();
+    }
+
+    public function approveByDanru(User $user): void
+    {
+        $this->update([
+            'status'             => StatusCuti::MENUNGGU_CHIEF,
+            'approved_by_danru'  => $user->id,
+            'approved_at_danru'  => now(),
+        ]);
+    }
+
+    public function approveByChief(User $user): void
+    {
+        $this->update([
+            'status'            => StatusCuti::MENUNGGU_KOORDINATOR,
+            'approved_by_chief' => $user->id,
+            'approved_at_chief' => now(),
+        ]);
     }
 
     public function approve(User $user): void
     {
         $this->update([
-            'status' => StatusCuti::DISETUJUI,
+            'status'      => StatusCuti::DISETUJUI,
             'approved_by' => $user->id,
             'approved_at' => now(),
         ]);
@@ -107,10 +152,10 @@ class Cuti extends Model
     public function reject(User $user, string $alasan): void
     {
         $this->update([
-            'status' => StatusCuti::DITOLAK,
-            'approved_by' => $user->id,
-            'approved_at' => now(),
-            'alasan_penolakan' => $alasan,
+            'status'            => StatusCuti::DITOLAK,
+            'approved_by'       => $user->id,
+            'approved_at'       => now(),
+            'alasan_penolakan'  => $alasan,
         ]);
     }
 }

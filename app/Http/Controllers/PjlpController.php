@@ -133,8 +133,8 @@ class PjlpController extends Controller
 
         // Handle foto upload
         if ($request->hasFile('foto')) {
-            // Delete old foto
-            if ($pjlp->foto) {
+            // Delete old foto jika ada dan file-nya masih exist
+            if ($pjlp->foto && Storage::disk('public')->exists('pjlp/' . $pjlp->foto)) {
                 Storage::disk('public')->delete('pjlp/' . $pjlp->foto);
             }
             $fotoPath = $request->file('foto')->store('pjlp', 'public');

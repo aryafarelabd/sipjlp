@@ -25,7 +25,7 @@
         <div class="alert alert-danger alert-dismissible" role="alert">
             <div class="d-flex">
                 <div><i class="ti ti-alert-circle icon alert-icon"></i></div>
-                <div>Email atau password salah. Silakan coba lagi.</div>
+                <div>{{ $errors->first('login') ?? 'Email/NIP atau password salah. Silakan coba lagi.' }}</div>
             </div>
             <a class="btn-close" data-bs-dismiss="alert" aria-label="close"></a>
         </div>
@@ -37,10 +37,11 @@
                 @csrf
                 <div class="mb-3">
                     <label class="form-label">
-                        <i class="ti ti-mail me-1 text-muted"></i> Email
+                        <i class="ti ti-user me-1 text-muted"></i> Email atau NIP
                     </label>
-                    <input type="email" name="email" class="form-control @error('email') is-invalid @enderror"
-                        placeholder="Masukkan email Anda" value="{{ old('email') }}" required autofocus>
+                    <input type="text" name="login" class="form-control @error('login') is-invalid @enderror"
+                        placeholder="contoh@email.com atau NIP" value="{{ old('login') }}" required autofocus>
+                    <div class="form-hint">Gunakan email atau NIP untuk login</div>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">

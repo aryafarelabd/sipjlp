@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AuditLog;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 class AuditLogController extends Controller
@@ -27,8 +28,9 @@ class AuditLogController extends Controller
             $query->where('waktu', '<=', $request->sampai . ' 23:59:59');
         }
 
-        $logs = $query->latest('waktu')->paginate(50);
+        $logs  = $query->latest('waktu')->paginate(50);
+        $users = User::orderBy('name')->get(['id', 'name']);
 
-        return view('audit-log.index', compact('logs'));
+        return view('audit-log.index', compact('logs', 'users'));
     }
 }

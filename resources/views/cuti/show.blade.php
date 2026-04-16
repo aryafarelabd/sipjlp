@@ -60,7 +60,73 @@
                     </div>
                 </div>
 
-                @if($cuti->status->value !== 'menunggu')
+                @if($cuti->danru)
+                <div class="mt-3">
+                    <label class="form-label text-muted small">Ditujukan ke Danru</label>
+                    <div class="fw-medium">{{ $cuti->danru->nama }}</div>
+                </div>
+                @endif
+
+                @php
+                    $isBerjenjang = in_array($cuti->status->value, ['menunggu_danru','menunggu_chief','menunggu_koordinator','disetujui','ditolak'])
+                        && $cuti->danru_id !== null;
+                    $isDanruFlow  = $cuti->danru_id !== null || $cuti->approved_by_danru !== null || $cuti->approved_by_chief !== null;
+                @endphp
+
+                @if($isDanruFlow)
+                <hr class="my-4">
+                <h4>Alur Persetujuan</h4>
+                <div class="steps steps-counter my-3">
+                    {{-- Level Danru --}}
+                    <div class="step-item {{ $cuti->approved_at_danru ? 'active' : ($cuti->status->value === 'menunggu_danru' ? '' : ($cuti->status->value === 'ditolak' && !$cuti->approved_at_danru ? 'text-danger' : 'active')) }}">
+                        <div class="fw-medium">
+                            Danru
+                            @if($cuti->approved_at_danru)
+                            <span class="badge bg-success-lt text-success ms-1">Disetujui</span>
+                            @elseif($cuti->status->value === 'menunggu_danru')
+                            <span class="badge bg-warning-lt text-warning ms-1">Menunggu</span>
+                            @elseif($cuti->status->value === 'ditolak' && !$cuti->approved_at_danru)
+                            <span class="badge bg-danger-lt text-danger ms-1">Ditolak</span>
+                            @endif
+                        </div>
+                        @if($cuti->approvedByDanru)
+                        <div class="text-muted small">{{ $cuti->approvedByDanru->name }} · {{ $cuti->approved_at_danru?->format('d M Y H:i') }}</div>
+                        @endif
+                    </div>
+                    {{-- Level Chief --}}
+                    <div class="step-item {{ $cuti->approved_at_chief ? 'active' : ($cuti->status->value === 'menunggu_chief' ? '' : '') }}">
+                        <div class="fw-medium">
+                            Chief
+                            @if($cuti->approved_at_chief)
+                            <span class="badge bg-success-lt text-success ms-1">Disetujui</span>
+                            @elseif($cuti->status->value === 'menunggu_chief')
+                            <span class="badge bg-warning-lt text-warning ms-1">Menunggu</span>
+                            @elseif($cuti->status->value === 'ditolak' && $cuti->approved_at_danru && !$cuti->approved_at_chief)
+                            <span class="badge bg-danger-lt text-danger ms-1">Ditolak</span>
+                            @endif
+                        </div>
+                        @if($cuti->approvedByChief)
+                        <div class="text-muted small">{{ $cuti->approvedByChief->name }} · {{ $cuti->approved_at_chief?->format('d M Y H:i') }}</div>
+                        @endif
+                    </div>
+                    {{-- Level Koordinator --}}
+                    <div class="step-item {{ $cuti->status === \App\Enums\StatusCuti::DISETUJUI ? 'active' : '' }}">
+                        <div class="fw-medium">
+                            Koordinator
+                            @if($cuti->status === \App\Enums\StatusCuti::DISETUJUI)
+                            <span class="badge bg-success-lt text-success ms-1">Disetujui</span>
+                            @elseif($cuti->status->value === 'menunggu_koordinator')
+                            <span class="badge bg-warning-lt text-warning ms-1">Menunggu</span>
+                            @elseif($cuti->status === \App\Enums\StatusCuti::DITOLAK && $cuti->approved_at_chief)
+                            <span class="badge bg-danger-lt text-danger ms-1">Ditolak</span>
+                            @endif
+                        </div>
+                        @if($cuti->approvedBy && $cuti->status === \App\Enums\StatusCuti::DISETUJUI)
+                        <div class="text-muted small">{{ $cuti->approvedBy->name }} · {{ $cuti->approved_at?->format('d M Y H:i') }}</div>
+                        @endif
+                    </div>
+                </div>
+                @elseif(!$cuti->status->isPending())
                 <hr class="my-4">
                 <h4>Informasi Persetujuan</h4>
                 <div class="datagrid">
@@ -73,6 +139,7 @@
                         <div class="datagrid-content">{{ $cuti->approved_at?->format('d M Y H:i') ?? '-' }}</div>
                     </div>
                 </div>
+                @endif
 
                 @if($cuti->alasan_penolakan)
                 <div class="mt-3">
@@ -81,7 +148,6 @@
                         {{ $cuti->alasan_penolakan }}
                     </div>
                 </div>
-                @endif
                 @endif
             </div>
             <div class="card-footer">
@@ -93,11 +159,16 @@
     </div>
 
     @can('approve', $cuti)
-    @if($cuti->status->value === 'menunggu')
+    @if($cuti->status->isPending())
     <div class="col-lg-4">
         <div class="card">
             <div class="card-header">
-                <h3 class="card-title">Aksi Koordinator</h3>
+                <h3 class="card-title">
+                    @if(auth()->user()->hasRole('danru')) Aksi Danru
+                    @elseif(auth()->user()->hasRole('chief')) Aksi Chief
+                    @else Aksi Koordinator
+                    @endif
+                </h3>
             </div>
             <div class="card-body">
                 <!-- Approve -->

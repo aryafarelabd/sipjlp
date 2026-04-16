@@ -121,15 +121,22 @@
                         <div class="row align-items-center">
                             <div class="col-auto">
                                 <span class="bg-green text-white avatar">
-                                    <i class="ti ti-fingerprint"></i>
+                                    <i class="ti ti-camera-selfie"></i>
                                 </span>
                             </div>
                             <div class="col">
-                                <div class="font-weight-medium">Absensi Hari Ini</div>
-                                <div class="text-muted">{{ now()->format('d M Y') }}</div>
+                                <div class="font-weight-medium">Hadir Hari Ini</div>
+                                <div class="text-muted small">
+                                    @if($absensiAlphaHariIni > 0)
+                                        <span class="text-danger">{{ $absensiAlphaHariIni }} alpha</span> &bull;
+                                    @endif
+                                    {{ $pjlpAktif - $absensiMasukHariIni }} belum
+                                </div>
                             </div>
                             <div class="col-auto">
-                                <span class="h1 mb-0 text-green">{{ $absensiHariIni }}</span>
+                                <a href="{{ route('absensi.rekap') }}" class="text-decoration-none">
+                                    <span class="h1 mb-0 text-green">{{ $absensiMasukHariIni }}</span>
+                                </a>
                             </div>
                         </div>
                     </div>
@@ -167,15 +174,15 @@
                         <div class="row align-items-center">
                             <div class="col-auto">
                                 <span class="bg-info text-white avatar avatar-lg">
-                                    <i class="ti ti-clipboard-list fs-2"></i>
+                                    <i class="ti ti-photo-check fs-2"></i>
                                 </span>
                             </div>
                             <div class="col">
-                                <div class="h2 mb-0">{{ $lembarKerjaPending }}</div>
-                                <div class="text-muted">Lembar Kerja Menunggu Validasi</div>
+                                <div class="h2 mb-0">{{ $buktiCsPending }}</div>
+                                <div class="text-muted">Bukti CS Menunggu Validasi</div>
                             </div>
                             <div class="col-auto">
-                                <a href="{{ route('lembar-kerja.index') }}?status=submitted" class="btn btn-info">
+                                <a href="{{ route('lembar-kerja-cs.index') }}" class="btn btn-info">
                                     <i class="ti ti-eye me-1"></i> Lihat
                                 </a>
                             </div>
@@ -196,43 +203,19 @@
             <div class="card-body">
                 <div class="row g-3">
                     <div class="col-6 col-md-2">
-                        <a href="{{ route('pjlp.create') }}" class="card card-link card-link-pop text-center p-3">
-                            <span class="avatar avatar-lg bg-primary-lt mb-2 mx-auto">
-                                <i class="ti ti-user-plus fs-2"></i>
-                            </span>
-                            <div class="fw-medium">Tambah PJLP</div>
-                        </a>
-                    </div>
-                    <div class="col-6 col-md-2">
-                        <a href="{{ route('users.create') }}" class="card card-link card-link-pop text-center p-3">
-                            <span class="avatar avatar-lg bg-blue-lt mb-2 mx-auto">
-                                <i class="ti ti-user-cog fs-2"></i>
-                            </span>
-                            <div class="fw-medium">Tambah User</div>
-                        </a>
-                    </div>
-                    <div class="col-6 col-md-2">
-                        <a href="{{ route('absensi.import') }}" class="card card-link card-link-pop text-center p-3">
-                            <span class="avatar avatar-lg bg-green-lt mb-2 mx-auto">
-                                <i class="ti ti-upload fs-2"></i>
-                            </span>
-                            <div class="fw-medium">Import Absensi</div>
-                        </a>
-                    </div>
-                    <div class="col-6 col-md-2">
                         <a href="{{ route('pjlp.index') }}" class="card card-link card-link-pop text-center p-3">
-                            <span class="avatar avatar-lg bg-purple-lt mb-2 mx-auto">
+                            <span class="avatar avatar-lg bg-primary-lt mb-2 mx-auto">
                                 <i class="ti ti-users fs-2"></i>
                             </span>
                             <div class="fw-medium">Data PJLP</div>
                         </a>
                     </div>
                     <div class="col-6 col-md-2">
-                        <a href="{{ route('absensi.index') }}" class="card card-link card-link-pop text-center p-3">
-                            <span class="avatar avatar-lg bg-orange-lt mb-2 mx-auto">
-                                <i class="ti ti-calendar-stats fs-2"></i>
+                        <a href="{{ route('absensi.rekap') }}" class="card card-link card-link-pop text-center p-3">
+                            <span class="avatar avatar-lg bg-green-lt mb-2 mx-auto">
+                                <i class="ti ti-fingerprint fs-2"></i>
                             </span>
-                            <div class="fw-medium">Data Absensi</div>
+                            <div class="fw-medium">Rekap Absensi</div>
                         </a>
                     </div>
                     <div class="col-6 col-md-2">
@@ -241,6 +224,22 @@
                                 <i class="ti ti-plane fs-2"></i>
                             </span>
                             <div class="fw-medium">Data Cuti</div>
+                        </a>
+                    </div>
+                    <div class="col-6 col-md-2">
+                        <a href="{{ route('lembar-kerja-cs.index') }}" class="card card-link card-link-pop text-center p-3">
+                            <span class="avatar avatar-lg bg-cyan-lt mb-2 mx-auto">
+                                <i class="ti ti-file-text fs-2"></i>
+                            </span>
+                            <div class="fw-medium">Lembar Kerja CS</div>
+                        </a>
+                    </div>
+                    <div class="col-6 col-md-2">
+                        <a href="{{ route('logbook-limbah.rekap') }}" class="card card-link card-link-pop text-center p-3">
+                            <span class="avatar avatar-lg bg-orange-lt mb-2 mx-auto">
+                                <i class="ti ti-file-invoice fs-2"></i>
+                            </span>
+                            <div class="fw-medium">Rekap Logbook Limbah</div>
                         </a>
                     </div>
                 </div>
@@ -300,41 +299,46 @@
                 </div>
             </div>
 
-            <!-- Recent Lembar Kerja -->
+            <!-- Recent Bukti CS -->
             <div class="col-lg-6">
                 <div class="card">
                     <div class="card-header">
                         <h3 class="card-title">
-                            <i class="ti ti-clipboard-list me-2 text-info"></i>
-                            Lembar Kerja Terbaru
+                            <i class="ti ti-photo-check me-2 text-info"></i>
+                            Bukti Pekerjaan CS Terbaru
                         </h3>
                         <div class="card-actions">
-                            <a href="{{ route('lembar-kerja.index') }}" class="btn btn-sm btn-outline-info">
+                            <a href="{{ route('lembar-kerja-cs.index') }}" class="btn btn-sm btn-outline-info">
                                 Lihat Semua <i class="ti ti-arrow-right ms-1"></i>
                             </a>
                         </div>
                     </div>
                     <div class="card-body card-body-scrollable card-body-scrollable-shadow" style="max-height: 350px;">
                         <div class="divide-y">
-                            @forelse($recentLembarKerja as $lk)
+                            @forelse($recentBuktiCs as $bukti)
                             <div class="row py-2">
                                 <div class="col-auto">
                                     <span class="avatar bg-info-lt">
-                                        <i class="ti ti-file-description"></i>
+                                        <i class="ti ti-photo"></i>
                                     </span>
                                 </div>
                                 <div class="col">
                                     <div class="text-truncate fw-medium">
-                                        {{ $lk->pjlp->nama ?? '-' }}
+                                        {{ $bukti->pjlp->nama ?? '-' }}
                                     </div>
                                     <div class="text-muted small">
-                                        {{ $lk->tanggal?->format('d/m/Y') ?? '-' }}
+                                        {{ $bukti->jadwalBulanan->area->nama ?? '-' }}
+                                        &bull; {{ $bukti->dikerjakan_at ? $bukti->dikerjakan_at->diffForHumans() : '-' }}
                                     </div>
                                 </div>
                                 <div class="col-auto align-self-center text-end">
-                                    <span class="badge bg-{{ $lk->status->color() }}-lt">
-                                        {{ $lk->status->label() }}
-                                    </span>
+                                    @if($bukti->is_validated)
+                                        <span class="badge bg-success-lt">Tervalidasi</span>
+                                    @elseif($bukti->is_rejected)
+                                        <span class="badge bg-danger-lt">Ditolak</span>
+                                    @else
+                                        <span class="badge bg-warning-lt">Menunggu</span>
+                                    @endif
                                 </div>
                             </div>
                             @empty
@@ -342,7 +346,7 @@
                                 <div class="empty-icon">
                                     <i class="ti ti-mood-smile"></i>
                                 </div>
-                                <p class="empty-title">Tidak ada lembar kerja</p>
+                                <p class="empty-title">Belum ada bukti pekerjaan</p>
                             </div>
                             @endforelse
                         </div>

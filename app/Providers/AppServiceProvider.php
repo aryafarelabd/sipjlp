@@ -5,7 +5,6 @@ namespace App\Providers;
 use App\Models\Absensi;
 use App\Models\BuktiPekerjaanCs;
 use App\Models\Cuti;
-use App\Models\Jadwal;
 use App\Models\JadwalKerjaCsBulanan;
 use App\Models\LembarKerja;
 use App\Models\LembarKerjaCs;
@@ -17,6 +16,9 @@ use App\Policies\LembarKerjaCsPolicy;
 use App\Policies\LembarKerjaPolicy;
 use App\Policies\PjlpPolicy;
 use App\Policies\UserPolicy;
+use App\Channels\TelegramChannel;
+use App\Services\TelegramService;
+use Illuminate\Notifications\ChannelManager;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
@@ -25,7 +27,9 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        //
+        $this->app->make(ChannelManager::class)->extend('telegram', function () {
+            return new TelegramChannel(new TelegramService());
+        });
     }
 
     public function boot(): void
@@ -42,14 +46,5 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(BuktiPekerjaanCs::class, BuktiPekerjaanCsPolicy::class);
         Gate::policy(JadwalKerjaCsBulanan::class, BuktiPekerjaanCsPolicy::class);
 
-        // Gate for Absensi import
-        Gate::define('import', function ($user, $model) {
-            return $user->can('absensi.import');
-        });
-
-        // Gate for Jadwal
-        Gate::define('jadwal.create', fn($user) => $user->can('jadwal.manage'));
-        Gate::define('jadwal.update', fn($user) => $user->can('jadwal.manage'));
-        Gate::define('jadwal.delete', fn($user) => $user->can('jadwal.manage'));
     }
 }

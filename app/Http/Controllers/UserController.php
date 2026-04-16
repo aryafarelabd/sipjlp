@@ -17,7 +17,7 @@ class UserController extends Controller
     {
         $this->authorize('viewAny', User::class);
 
-        $query = User::with('roles');
+        $query = User::with(['roles', 'pjlp']);
 
         if ($request->filled('role')) {
             $query->role($request->role);
@@ -52,10 +52,11 @@ class UserController extends Controller
         $validated = $request->validated();
 
         $user = User::create([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'password' => Hash::make($validated['password']),
-            'unit' => $validated['unit'] ?? null,
+            'name'      => $validated['name'],
+            'nip'       => $validated['nip'] ?? null,
+            'email'     => $validated['email'],
+            'password'  => Hash::make($validated['password']),
+            'unit'      => $validated['unit'] ?? null,
             'is_active' => true,
         ]);
 
@@ -92,9 +93,10 @@ class UserController extends Controller
         $dataLama = $user->toArray();
 
         $user->update([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'unit' => $validated['unit'] ?? null,
+            'name'      => $validated['name'],
+            'nip'       => $validated['nip'] ?? null,
+            'email'     => $validated['email'],
+            'unit'      => $validated['unit'] ?? null,
             'is_active' => $validated['is_active'],
         ]);
 

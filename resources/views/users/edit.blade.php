@@ -3,92 +3,256 @@
 @section('title', 'Edit User')
 
 @section('content')
-<div class="row justify-content-center">
-    <div class="col-lg-6">
-        <div class="card">
-            <div class="card-header">
-                <h3 class="card-title">Edit User</h3>
+<div class="page-header d-print-none">
+    <div class="container-xl">
+        <div class="row g-2 align-items-center">
+            <div class="col-auto">
+                <a href="{{ route('users.index') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="ti ti-arrow-left me-1"></i>Kembali
+                </a>
             </div>
-            <form action="{{ route('users.update', $user) }}" method="POST">
-                @csrf
-                @method('PUT')
-                <div class="card-body">
-                    <div class="mb-3">
-                        <label class="form-label required">Nama</label>
-                        <input type="text" name="name" class="form-control @error('name') is-invalid @enderror"
-                               value="{{ old('name', $user->name) }}" required>
-                        @error('name')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
+            <div class="col">
+                <h2 class="page-title">Edit User</h2>
+                <div class="text-muted mt-1">{{ $user->email }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="page-body">
+    <div class="container-xl">
+        <div class="row justify-content-center">
+            <div class="col-lg-7">
+                <form action="{{ route('users.update', $user) }}" method="POST" id="formUser">
+                    @csrf
+                    @method('PUT')
+
+                    {{-- Informasi Akun --}}
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h3 class="card-title"><i class="ti ti-user me-2 text-primary"></i>Informasi Akun</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label required">Nama Lengkap</label>
+                                <input type="text" name="name"
+                                       class="form-control @error('name') is-invalid @enderror"
+                                       value="{{ old('name', $user->name) }}"
+                                       placeholder="Nama sesuai identitas" required>
+                                @error('name')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div class="mb-3" id="nipSection" style="{{ old('role', $currentRole ?? '') === 'pjlp' ? '' : 'display:none;' }}">
+                                <label class="form-label">NIP</label>
+                                <input type="text" name="nip" id="nipInput"
+                                       class="form-control @error('nip') is-invalid @enderror"
+                                       value="{{ old('nip', $user->nip) }}"
+                                       placeholder="Contoh: 198001012005011001"
+                                       inputmode="numeric" pattern="[0-9]*"
+                                       maxlength="30">
+                                @error('nip')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                                <div class="form-hint">Hanya angka, digunakan sebagai alternatif login</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label required">Email</label>
+                                <input type="email" name="email"
+                                       class="form-control @error('email') is-invalid @enderror"
+                                       value="{{ old('email', $user->email) }}"
+                                       placeholder="contoh@rsudcipayung.id" required>
+                                @error('email')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                                <div class="form-hint">Digunakan untuk login ke sistem</div>
+                            </div>
+
+                            <div class="row g-3">
+                                <div class="col-sm-6">
+                                    <label class="form-label">Password Baru</label>
+                                    <input type="password" name="password"
+                                           class="form-control @error('password') is-invalid @enderror"
+                                           placeholder="Kosongkan jika tidak diubah">
+                                    @error('password')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                    <div class="form-hint">Min. 8 karakter</div>
+                                </div>
+                                <div class="col-sm-6">
+                                    <label class="form-label">Konfirmasi Password</label>
+                                    <input type="password" name="password_confirmation"
+                                           class="form-control"
+                                           placeholder="Ulangi password baru">
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label required">Email</label>
-                        <input type="email" name="email" class="form-control @error('email') is-invalid @enderror"
-                               value="{{ old('email', $user->email) }}" required>
-                        @error('email')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
+                    {{-- Hak Akses --}}
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h3 class="card-title"><i class="ti ti-shield-check me-2 text-blue"></i>Hak Akses</h3>
+                        </div>
+                        <div class="card-body">
+
+                            @php $currentRole = old('role', $user->roles->first()?->name); @endphp
+
+                            {{-- Role selector cards --}}
+                            <div class="mb-3">
+                                <label class="form-label required">Role</label>
+                                <div class="row g-2" id="roleCards">
+                                    @php
+                                        $roleInfo = [
+                                            'pjlp'        => ['color' => 'green',  'icon' => 'ti-id-badge',    'desc' => 'Absen selfie, lembar kerja, cuti'],
+                                            'koordinator' => ['color' => 'blue',   'icon' => 'ti-user-check',  'desc' => 'Kelola jadwal & rekap unit'],
+                                            'admin'       => ['color' => 'red',    'icon' => 'ti-settings',    'desc' => 'Akses penuh ke semua fitur'],
+                                            'manajemen'   => ['color' => 'purple', 'icon' => 'ti-chart-bar',   'desc' => 'Lihat laporan & statistik'],
+                                        ];
+                                    @endphp
+                                    @foreach($roles as $role)
+                                    @php $info = $roleInfo[$role->name] ?? ['color' => 'secondary', 'icon' => 'ti-user', 'desc' => '']; @endphp
+                                    <div class="col-6 col-md-3">
+                                        <label class="role-card d-block cursor-pointer">
+                                            <input type="radio" name="role" value="{{ $role->name }}"
+                                                   class="d-none role-radio"
+                                                   {{ $currentRole == $role->name ? 'checked' : '' }} required>
+                                            <div class="card card-sm text-center p-2 role-card-inner border-2"
+                                                 data-color="{{ $info['color'] }}">
+                                                <div class="avatar avatar-sm bg-{{ $info['color'] }}-lt mx-auto mb-1 mt-1">
+                                                    <i class="ti {{ $info['icon'] }}"></i>
+                                                </div>
+                                                <div class="fw-bold small">{{ ucfirst($role->name) }}</div>
+                                                <div class="text-muted" style="font-size:0.68rem;line-height:1.3">{{ $info['desc'] }}</div>
+                                            </div>
+                                        </label>
+                                    </div>
+                                    @endforeach
+                                </div>
+                                @error('role')
+                                <div class="text-danger small mt-1">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            {{-- Unit --}}
+                            <div id="unitSection" class="mb-3" style="display:none;">
+                                <label class="form-label" id="unitLabel">Unit</label>
+                                <div class="row g-2">
+                                    @foreach(\App\Enums\UnitType::cases() as $unit)
+                                    <div class="col-auto">
+                                        <label class="form-check form-check-inline">
+                                            <input class="form-check-input" type="radio"
+                                                   name="unit" value="{{ $unit->value }}"
+                                                   {{ old('unit', $user->unit?->value) == $unit->value ? 'checked' : '' }}>
+                                            <span class="form-check-label fw-medium">{{ $unit->label() }}</span>
+                                        </label>
+                                    </div>
+                                    @endforeach
+                                    <div class="col-auto">
+                                        <label class="form-check form-check-inline">
+                                            <input class="form-check-input" type="radio"
+                                                   name="unit" value=""
+                                                   {{ old('unit', $user->unit?->value) === null ? 'checked' : '' }}>
+                                            <span class="form-check-label text-muted">Tidak Ada</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="form-hint" id="unitHint"></div>
+                            </div>
+
+                            {{-- Info box --}}
+                            <div id="roleInfoBox" class="alert alert-info d-none" style="font-size:0.85rem;">
+                                <i class="ti ti-info-circle me-1"></i>
+                                <span id="roleInfoText"></span>
+                            </div>
+
+                        </div>
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label">Password Baru</label>
-                        <input type="password" name="password" class="form-control @error('password') is-invalid @enderror">
-                        <small class="text-muted">Kosongkan jika tidak ingin mengubah password</small>
-                        @error('password')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
+                    {{-- Status --}}
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <label class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" name="is_active" value="1"
+                                       {{ old('is_active', $user->is_active) ? 'checked' : '' }}>
+                                <span class="form-check-label">
+                                    <span class="fw-medium">Akun Aktif</span>
+                                    <span class="form-hint d-block">User dapat login ke sistem</span>
+                                </span>
+                            </label>
+                            @if($user->id === auth()->id())
+                            <div class="alert alert-warning mt-2 mb-0 py-2" style="font-size:0.82rem;">
+                                <i class="ti ti-alert-triangle me-1"></i>
+                                Anda sedang mengedit akun sendiri. Menonaktifkan akun ini akan memblokir login Anda.
+                            </div>
+                            @endif
+                        </div>
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label">Konfirmasi Password</label>
-                        <input type="password" name="password_confirmation" class="form-control">
+                    <div class="d-flex gap-2 justify-content-end">
+                        <a href="{{ route('users.index') }}" class="btn btn-secondary">Batal</a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="ti ti-check me-1"></i>Simpan Perubahan
+                        </button>
                     </div>
-
-                    <div class="mb-3">
-                        <label class="form-label required">Role</label>
-                        <select name="role" class="form-select @error('role') is-invalid @enderror" required>
-                            <option value="">Pilih Role</option>
-                            @foreach($roles as $role)
-                            <option value="{{ $role->name }}" {{ old('role', $user->roles->first()?->name) == $role->name ? 'selected' : '' }}>
-                                {{ ucfirst($role->name) }}
-                            </option>
-                            @endforeach
-                        </select>
-                        @error('role')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">Unit (untuk Koordinator)</label>
-                        <select name="unit" class="form-select @error('unit') is-invalid @enderror">
-                            <option value="">Tidak Ada</option>
-                            @foreach(\App\Enums\UnitType::cases() as $unit)
-                            <option value="{{ $unit->value }}" {{ old('unit', $user->unit?->value) == $unit->value ? 'selected' : '' }}>
-                                {{ $unit->label() }}
-                            </option>
-                            @endforeach
-                        </select>
-                        @error('unit')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-check">
-                            <input type="checkbox" name="is_active" value="1" class="form-check-input"
-                                   {{ old('is_active', $user->is_active) ? 'checked' : '' }}>
-                            <span class="form-check-label">Aktif</span>
-                        </label>
-                    </div>
-                </div>
-                <div class="card-footer text-end">
-                    <a href="{{ route('users.index') }}" class="btn btn-secondary me-2">Batal</a>
-                    <button type="submit" class="btn btn-primary">Update</button>
-                </div>
-            </form>
+                </form>
+            </div>
         </div>
     </div>
 </div>
 @endsection
+
+@push('styles')
+<style>
+.role-card-inner { transition: border-color .15s, background .15s; border-color: transparent !important; }
+.role-radio:checked + .role-card-inner { border-color: var(--tblr-primary) !important; background: var(--tblr-primary-lt); }
+.role-radio[value="pjlp"]:checked + .role-card-inner        { border-color: #2fb344 !important; background: #d1f0d8; }
+.role-radio[value="koordinator"]:checked + .role-card-inner { border-color: #206bc4 !important; background: #dce8f8; }
+.role-radio[value="admin"]:checked + .role-card-inner       { border-color: #d63939 !important; background: #fce8e8; }
+.role-radio[value="manajemen"]:checked + .role-card-inner   { border-color: #ae3ec9 !important; background: #f3d9f8; }
+.cursor-pointer { cursor: pointer; }
+</style>
+@endpush
+
+@push('scripts')
+<script>
+const roleInfo = {
+    pjlp:        { showUnit: true,  showNip: true,  unitRequired: false, hint: 'Unit hanya informasi tambahan untuk PJLP. Data unit utama ada di profil PJLP.', info: 'PJLP dapat absen selfie, isi lembar kerja, dan mengajukan cuti.' },
+    koordinator: { showUnit: true,  showNip: false, unitRequired: true,  hint: 'Koordinator hanya bisa melihat PJLP di unitnya.', info: 'Koordinator mengelola jadwal, melihat rekap absensi, dan memvalidasi pekerjaan untuk unitnya.' },
+    admin:       { showUnit: false, showNip: false, unitRequired: false, hint: '', info: 'Admin memiliki akses penuh ke seluruh fitur sistem termasuk manajemen user dan master data.' },
+    manajemen:   { showUnit: false, showNip: false, unitRequired: false, hint: '', info: 'Manajemen hanya bisa melihat laporan dan statistik, tidak bisa mengubah data.' },
+};
+
+function onRoleChange(role) {
+    const cfg = roleInfo[role] || { showUnit: false, showNip: false, unitRequired: false, hint: '', info: '' };
+    const unitSection = document.getElementById('unitSection');
+    const unitHint    = document.getElementById('unitHint');
+    const unitLabel   = document.getElementById('unitLabel');
+    const infoBox     = document.getElementById('roleInfoBox');
+    const infoText    = document.getElementById('roleInfoText');
+    const nipSection  = document.getElementById('nipSection');
+
+    unitSection.style.display = cfg.showUnit ? '' : 'none';
+    unitHint.textContent = cfg.hint;
+    unitLabel.textContent = cfg.unitRequired ? 'Unit *' : 'Unit';
+
+    nipSection.style.display = cfg.showNip ? '' : 'none';
+
+    if (cfg.info) {
+        infoText.textContent = cfg.info;
+        infoBox.classList.remove('d-none');
+    } else {
+        infoBox.classList.add('d-none');
+    }
+}
+
+document.querySelectorAll('.role-radio').forEach(radio => {
+    radio.addEventListener('change', () => onRoleChange(radio.value));
+});
+
+const checkedRole = document.querySelector('.role-radio:checked');
+if (checkedRole) onRoleChange(checkedRole.value);
+</script>
+@endpush

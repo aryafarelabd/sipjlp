@@ -34,6 +34,25 @@
                         <small class="text-muted">Diisi otomatis oleh sistem</small>
                     </div>
 
+                    @if(!empty($danruList) && $danruList->isNotEmpty())
+                    <!-- Pilih Danru (khusus anggota security) -->
+                    <div class="mb-3">
+                        <label class="form-label required">Tujukan ke Danru</label>
+                        <select name="danru_id" class="form-select @error('danru_id') is-invalid @enderror" required>
+                            <option value="">-- Pilih Danru --</option>
+                            @foreach($danruList as $danru)
+                            <option value="{{ $danru->id }}" {{ old('danru_id') == $danru->id ? 'selected' : '' }}>
+                                {{ $danru->nama }}
+                            </option>
+                            @endforeach
+                        </select>
+                        @error('danru_id')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                        <small class="text-muted">Pilih danru yang bertugas pada shift Anda</small>
+                    </div>
+                    @endif
+
                     <!-- Jenis Cuti -->
                     <div class="mb-3">
                         <label class="form-label required">Jenis Cuti</label>
@@ -126,7 +145,11 @@
                     <strong>Penting:</strong>
                 </div>
                 <ul class="mb-0">
+                    @if(!empty($danruList) && $danruList->isNotEmpty())
+                    <li>Pengajuan akan dikirim ke <strong>Danru → Chief → Koordinator</strong> secara berjenjang</li>
+                    @else
                     <li>Pengajuan cuti akan dikirim ke Koordinator untuk disetujui</li>
+                    @endif
                     <li>Tanggal permohonan diisi otomatis oleh sistem</li>
                     <li>Data <strong>tidak dapat diubah</strong> setelah dikirim</li>
                     <li>Pastikan nomor telepon yang diisi aktif dan dapat dihubungi</li>

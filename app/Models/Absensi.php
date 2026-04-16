@@ -24,6 +24,12 @@ class Absensi extends Model
         'menit_terlambat',
         'sumber_data',
         'keterangan',
+        'foto_masuk',
+        'foto_pulang',
+        'latitude_masuk',
+        'longitude_masuk',
+        'latitude_pulang',
+        'longitude_pulang',
     ];
 
     protected function casts(): array
@@ -61,6 +67,16 @@ class Absensi extends Model
     {
         return $query->whereYear('tanggal', $year)
                      ->whereMonth('tanggal', $month);
+    }
+
+    public function getFotoMasukUrlAttribute(): ?string
+    {
+        return $this->foto_masuk ? asset('storage/' . $this->foto_masuk) : null;
+    }
+
+    public function getFotoPulangUrlAttribute(): ?string
+    {
+        return $this->foto_pulang ? asset('storage/' . $this->foto_pulang) : null;
     }
 
     public function hitungKeterlambatan(): int

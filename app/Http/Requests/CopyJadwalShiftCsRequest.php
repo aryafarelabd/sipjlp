@@ -14,7 +14,7 @@ class CopyJadwalShiftCsRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'area_id'        => 'required|exists:master_area_cs,id',
+            'area_id'        => 'nullable|exists:master_area_cs,id',
             'source_date'    => 'required|date',
             'target_dates'   => 'required|array',
             'target_dates.*' => 'date',

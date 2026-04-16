@@ -17,11 +17,20 @@ class UpdateUserRequest extends FormRequest
 
         return [
             'name'      => 'required|string|max:255',
+            'nip'       => 'nullable|string|digits_between:1,30|unique:users,nip,' . $userId,
             'email'     => 'required|email|max:255|unique:users,email,' . $userId,
             'password'  => 'nullable|min:8|confirmed',
             'role'      => 'required|exists:roles,name',
             'unit'      => 'nullable|in:security,cleaning,all',
             'is_active' => 'required|boolean',
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'nip.digits_between' => 'NIP hanya boleh berisi angka (maksimal 30 digit).',
+            'nip.unique'         => 'NIP sudah digunakan oleh user lain.',
         ];
     }
 }

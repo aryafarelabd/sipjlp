@@ -4,19 +4,34 @@ namespace App\Http\Controllers;
 
 use App\Enums\StatusCuti;
 use App\Enums\StatusLembarKerja;
+use App\Enums\UnitType;
 use App\Models\Absensi;
 use App\Models\BuktiPekerjaanCs;
 use App\Models\Cuti;
 use App\Models\JadwalShiftCs;
 use App\Models\JenisCuti;
+use App\Models\BuktiPekerjaanLimbah;
+use App\Models\GerakanJumatSehat;
+use App\Models\InspeksiHydrant;
+use App\Models\InspeksiHydrantIndoor;
 use App\Models\LembarKerja;
-use App\Models\LogAbsensiMesin;
+use App\Models\LogbookBankSampah;
+use App\Services\AbsensiSelfieService;
+use App\Models\LogbookDekontaminasi;
+use App\Models\LogbookHepafilter;
+use App\Models\LogbookLimbah;
+use App\Models\LogbookB3;
+use App\Models\PatrolInspeksi;
+use App\Models\PengecekanApar;
+use App\Models\PengawasanProyek;
 use App\Models\Pjlp;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
+    public function __construct(private AbsensiSelfieService $absensiService) {}
+
     public function index(Request $request)
     {
         $user = $request->user();
@@ -37,7 +52,9 @@ class DashboardController extends Controller
             return $this->manajemenDashboard();
         }
 
-        return view('dashboard.default');
+        // User tanpa role yang dikenali — arahkan ke profile
+        return redirect()->route('profile.edit')
+            ->with('error', 'Akun Anda belum dikonfigurasi. Hubungi administrator.');
     }
 
     private function pjlpDashboard($user)
@@ -58,29 +75,34 @@ class DashboardController extends Controller
         $month = $today->month;
         $year = $today->year;
 
-        // Jadwal shift hari ini (untuk Cleaning Service)
-        $jadwalShiftHariIni = JadwalShiftCs::where('pjlp_id', $pjlp->id)
-            ->whereDate('tanggal', $today)
-            ->with('shift')
-            ->first();
+        // Jadwal shift hari ini — support Security & CS
+        $jadwalInfo = $this->absensiService->getJadwalForPjlp($pjlp, $today);
+        $jadwalShiftHariIni = null;
+        if ($jadwalInfo['is_kerja'] && $jadwalInfo['shift']) {
+            // Buat objek pseudo agar view lama tetap kompatibel
+            $jadwalShiftHariIni = (object) [
+                'status'       => 'normal',
+                'shift'        => $jadwalInfo['shift'],
+                'status_label' => 'Kerja',
+                'status_color' => 'success',
+            ];
+        } elseif (isset($jadwalInfo['jadwal']) && $jadwalInfo['jadwal']) {
+            // Non-kerja day (libur/cuti/etc) — hanya CS punya status_label
+            $jadwalShiftHariIni = $jadwalInfo['jadwal'];
+        }
 
         $cutiPending = $pjlp->cuti()->pending()->latest()->take(5)->get();
 
-        // Hitung dari log_absensi_mesin
-        $logBulanIni = LogAbsensiMesin::where('pjlp_id', $pjlp->id)
-            ->whereMonth('check_time', $month)
-            ->whereYear('check_time', $year)
+        // Rekap absensi bulan ini dari tabel absensi (selfie)
+        $absensiBulanIni = Absensi::where('pjlp_id', $pjlp->id)
+            ->whereYear('tanggal', $year)
+            ->whereMonth('tanggal', $month)
             ->get();
 
-        $hariMasuk = $logBulanIni->where('check_type', 'I')
-            ->groupBy(fn($item) => $item->check_time->format('Y-m-d'))
-            ->count();
-
-        $totalScan = $logBulanIni->count();
-
         $rekapAbsensiBulanIni = [
-            'hari_masuk' => $hariMasuk,
-            'total_scan' => $totalScan,
+            'hari_masuk'  => $absensiBulanIni->whereIn('status.value', ['hadir', 'terlambat'])->count(),
+            'total_alpha' => $absensiBulanIni->where('status.value', 'alpha')->count(),
+            'total_telat' => $absensiBulanIni->where('status.value', 'terlambat')->sum('menit_terlambat'),
         ];
 
         // Hitung sisa cuti tahun ini per jenis cuti (exclude Cuti Melahirkan dan Cuti Besar)
@@ -104,12 +126,38 @@ class DashboardController extends Controller
             ];
         }
 
+        // Jumat Sehat bulan ini
+        $jumatSehatCount = GerakanJumatSehat::where('pjlp_id', $pjlp->id)
+            ->whereMonth('tanggal', $month)->whereYear('tanggal', $year)->count();
+
+        // Unit-specific stats bulan ini
+        $unitStats = [];
+        if ($pjlp->unit === UnitType::CLEANING) {
+            $unitStats = [
+                'logbook_limbah'      => LogbookLimbah::where('pjlp_id', $pjlp->id)->whereMonth('tanggal', $month)->whereYear('tanggal', $year)->count(),
+                'logbook_b3'          => LogbookB3::where('pjlp_id', $pjlp->id)->whereMonth('tanggal', $month)->whereYear('tanggal', $year)->count(),
+                'logbook_hepafilter'  => LogbookHepafilter::where('pjlp_id', $pjlp->id)->whereMonth('tanggal', $month)->whereYear('tanggal', $year)->count(),
+                'logbook_dekont'      => LogbookDekontaminasi::where('pjlp_id', $pjlp->id)->whereMonth('tanggal', $month)->whereYear('tanggal', $year)->count(),
+                'logbook_bank_sampah' => LogbookBankSampah::where('pjlp_id', $pjlp->id)->whereMonth('tanggal', $month)->whereYear('tanggal', $year)->count(),
+            ];
+        } elseif ($pjlp->unit === UnitType::SECURITY) {
+            $unitStats = [
+                'patrol'          => PatrolInspeksi::where('pjlp_id', $pjlp->id)->whereMonth('tanggal', $month)->whereYear('tanggal', $year)->count(),
+                'hydrant_outdoor' => InspeksiHydrant::where('pjlp_id', $pjlp->id)->whereMonth('tanggal', $month)->whereYear('tanggal', $year)->count(),
+                'hydrant_indoor'  => InspeksiHydrantIndoor::where('pjlp_id', $pjlp->id)->whereMonth('tanggal', $month)->whereYear('tanggal', $year)->count(),
+                'apar'            => PengecekanApar::where('pjlp_id', $pjlp->id)->whereMonth('tanggal', $month)->whereYear('tanggal', $year)->count(),
+                'proyek'          => PengawasanProyek::where('pjlp_id', $pjlp->id)->whereMonth('tanggal', $month)->whereYear('tanggal', $year)->count(),
+            ];
+        }
+
         return view('dashboard.pjlp', compact(
             'pjlp',
             'jadwalShiftHariIni',
             'cutiPending',
             'rekapAbsensiBulanIni',
-            'sisaCuti'
+            'sisaCuti',
+            'jumatSehatCount',
+            'unitStats'
         ));
     }
 
@@ -137,10 +185,12 @@ class DashboardController extends Controller
         ->where('is_rejected', false)
         ->count();
 
-        // Absensi hari ini unit (dari log mesin)
-        $absensiHariIni = LogAbsensiMesin::whereHas('pjlp', function ($q) use ($user) {
-            $q->forKoordinator($user);
-        })->whereDate('check_time', $today)->count();
+        // Absensi hari ini unit (dari selfie)
+        $pjlpIds = Pjlp::active()->forKoordinator($user)->pluck('id');
+        $absensiHariIniQuery = Absensi::whereIn('pjlp_id', $pjlpIds)->whereDate('tanggal', $today);
+        $absensiMasukHariIni = (clone $absensiHariIniQuery)->whereNotNull('jam_masuk')->count();
+        $absensiAlphaHariIni = (clone $absensiHariIniQuery)->where('status', 'alpha')->count();
+        $absensiHariIni      = $absensiMasukHariIni;
 
         // Recent cuti requests
         $recentCuti = Cuti::whereHas('pjlp', function ($q) use ($user) {
@@ -166,6 +216,8 @@ class DashboardController extends Controller
             'cutiPending',
             'buktiPendingCount',
             'absensiHariIni',
+            'absensiMasukHariIni',
+            'absensiAlphaHariIni',
             'recentCuti',
             'recentBuktiPending'
         ));
@@ -179,14 +231,18 @@ class DashboardController extends Controller
         $pjlpAktif = Pjlp::active()->count();
 
         $cutiPending = Cuti::pending()->count();
-        $lembarKerjaPending = LembarKerja::pending()->count();
+        $buktiCsPending = BuktiPekerjaanCs::where('is_completed', true)
+            ->where('is_validated', false)->where('is_rejected', false)->count();
 
         $today = Carbon::today();
-        $absensiHariIni = LogAbsensiMesin::whereDate('check_time', $today)->count();
+        $absensiMasukHariIni = Absensi::whereDate('tanggal', $today)->whereNotNull('jam_masuk')->count();
+        $absensiAlphaHariIni = Absensi::whereDate('tanggal', $today)->where('status', 'alpha')->count();
+        $absensiHariIni      = $absensiMasukHariIni;
 
         // Recent activities
         $recentCuti = Cuti::with('pjlp', 'jenisCuti')->latest()->take(5)->get();
-        $recentLembarKerja = LembarKerja::with('pjlp')->latest()->take(5)->get();
+        $recentBuktiCs = BuktiPekerjaanCs::with(['pjlp', 'jadwalBulanan.area'])
+            ->latest()->take(5)->get();
 
         return view('dashboard.admin', compact(
             'totalPjlp',
@@ -194,10 +250,12 @@ class DashboardController extends Controller
             'pjlpCleaning',
             'pjlpAktif',
             'cutiPending',
-            'lembarKerjaPending',
+            'buktiCsPending',
             'absensiHariIni',
+            'absensiMasukHariIni',
+            'absensiAlphaHariIni',
             'recentCuti',
-            'recentLembarKerja'
+            'recentBuktiCs'
         ));
     }
 
@@ -211,17 +269,22 @@ class DashboardController extends Controller
         $month = $today->month;
         $year = $today->year;
 
-        // Rekap absensi bulan ini (dari log mesin)
-        $logBulanIni = LogAbsensiMesin::whereMonth('check_time', $month)
-            ->whereYear('check_time', $year)
-            ->whereNotNull('pjlp_id')
-            ->get();
+        // Rekap absensi bulan ini (dari selfie)
+        $absensiBulanIni = Absensi::whereYear('tanggal', $year)
+            ->whereMonth('tanggal', $month)
+            ->selectRaw('status, COUNT(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status')
+            ->toArray();
 
         $rekapAbsensi = [
-            'total_scan' => $logBulanIni->count(),
-            'scan_masuk' => $logBulanIni->where('check_type', 'I')->count(),
-            'scan_pulang' => $logBulanIni->where('check_type', 'O')->count(),
-            'hari_aktif' => $logBulanIni->groupBy(fn($item) => $item->check_time->format('Y-m-d'))->count(),
+            'total_hadir'  => ($absensiBulanIni['hadir'] ?? 0) + ($absensiBulanIni['terlambat'] ?? 0),
+            'total_alpha'  => $absensiBulanIni['alpha'] ?? 0,
+            'total_izin'   => ($absensiBulanIni['izin'] ?? 0) + ($absensiBulanIni['cuti'] ?? 0),
+            'total_telat'  => Absensi::whereYear('tanggal', $year)
+                                ->whereMonth('tanggal', $month)
+                                ->where('status', 'terlambat')
+                                ->sum('menit_terlambat'),
         ];
 
         // Rekap cuti bulan ini

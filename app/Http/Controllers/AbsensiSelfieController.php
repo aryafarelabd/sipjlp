@@ -1,0 +1,445 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Enums\SumberDataAbsensi;
+use App\Enums\StatusAbsensi;
+use App\Exports\RekapAbsensiExport;
+use App\Http\Requests\AbsenMasukRequest;
+use App\Http\Requests\AbsenPulangRequest;
+use App\Http\Requests\KoreksiAbsensiRequest;
+use App\Models\Absensi;
+use App\Models\AuditLog;
+use App\Models\Pjlp;
+use App\Models\User;
+use App\Notifications\AbsensiAlertNotification;
+use App\Services\AbsensiSelfieService;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
+
+class AbsensiSelfieController extends Controller
+{
+    public function __construct(protected AbsensiSelfieService $service) {}
+
+    /**
+     * Halaman absen untuk PJLP (mobile).
+     */
+    public function showAbsenPage()
+    {
+        $user = auth()->user();
+        $pjlp = $user->pjlp;
+
+        if (!$pjlp) {
+            return redirect()->route('dashboard')
+                ->with('error', 'Profil PJLP tidak ditemukan. Hubungi administrator.');
+        }
+
+        $today        = Carbon::today();
+        $now          = Carbon::now();
+        $jadwalInfo   = $this->service->getJadwalForPjlp($pjlp, $today);
+        $absensiHariIni = Absensi::where('pjlp_id', $pjlp->id)
+            ->whereDate('tanggal', $today)
+            ->with('shift')
+            ->first();
+
+        $shift        = $jadwalInfo['shift'];
+        $hasJadwal    = $jadwalInfo['is_kerja'];
+
+        $masukStatus  = null;
+        $pulangStatus = null;
+        $windowMasuk  = null;
+        $windowPulang = null;
+
+        if ($hasJadwal && $shift) {
+            $windowMasuk  = $this->service->getWindowMasuk($shift, $today);
+            $windowPulang = $this->service->getWindowPulang($shift, $today);
+            $masukStatus  = $this->service->checkInAllowed($absensiHariIni, $shift, $now, $today);
+            $pulangStatus = $this->service->checkOutAllowed($absensiHariIni, $shift, $now, $today);
+        }
+
+        return view('absensi.selfie.absen', compact(
+            'pjlp',
+            'shift',
+            'hasJadwal',
+            'absensiHariIni',
+            'masukStatus',
+            'pulangStatus',
+            'windowMasuk',
+            'windowPulang',
+            'now',
+        ));
+    }
+
+    /**
+     * Proses absen masuk.
+     */
+    public function absenMasuk(AbsenMasukRequest $request)
+    {
+        $pjlp = auth()->user()->pjlp;
+
+        if (!$pjlp) {
+            return redirect()->route('dashboard')->with('error', 'Profil PJLP tidak ditemukan.');
+        }
+
+        $today      = Carbon::today();
+        $now        = Carbon::now();
+        $jadwalInfo = $this->service->getJadwalForPjlp($pjlp, $today);
+
+        if (!$jadwalInfo['is_kerja'] || !$jadwalInfo['shift']) {
+            return redirect()->route('absen.index')->with('error', 'Tidak ada jadwal kerja hari ini.');
+        }
+
+        $shift  = $jadwalInfo['shift'];
+        $check  = $this->service->checkInAllowed(
+            Absensi::where('pjlp_id', $pjlp->id)->whereDate('tanggal', $today)->first(),
+            $shift, $now, $today
+        );
+
+        if (!$check['allowed']) {
+            return redirect()->route('absen.index')->with('error', $check['reason']);
+        }
+
+        $fotoPath = $this->service->storeSelfiePhoto($request->file('foto'), 'masuk', $pjlp);
+        $absensi  = $this->service->processAbsenMasuk(
+            $pjlp, $shift, $now, $fotoPath,
+            $request->filled('latitude')  ? (float) $request->latitude  : null,
+            $request->filled('longitude') ? (float) $request->longitude : null,
+        );
+
+        AuditLog::log('Absen masuk selfie', $absensi, null, $absensi->toArray());
+
+        // Notifikasi ke koordinator jika terlambat
+        if ($absensi->status === StatusAbsensi::TERLAMBAT) {
+            $koordinators = User::role('koordinator')
+                ->where('unit', $pjlp->unit)
+                ->whereNotNull('telegram_chat_id')
+                ->get();
+            foreach ($koordinators as $koordinator) {
+                $koordinator->notify(new AbsensiAlertNotification($pjlp, 'terlambat', $absensi));
+            }
+        }
+
+        return redirect()->route('absen.index')
+            ->with('success', 'Absen masuk berhasil dicatat pukul ' . $now->format('H:i') . '.');
+    }
+
+    /**
+     * Proses absen pulang.
+     */
+    public function absenPulang(AbsenPulangRequest $request)
+    {
+        $pjlp = auth()->user()->pjlp;
+
+        if (!$pjlp) {
+            return redirect()->route('dashboard')->with('error', 'Profil PJLP tidak ditemukan.');
+        }
+
+        $today      = Carbon::today();
+        $now        = Carbon::now();
+        $jadwalInfo = $this->service->getJadwalForPjlp($pjlp, $today);
+
+        if (!$jadwalInfo['shift']) {
+            return redirect()->route('absen.index')->with('error', 'Tidak ada jadwal kerja hari ini.');
+        }
+
+        $shift    = $jadwalInfo['shift'];
+        $absensi  = Absensi::where('pjlp_id', $pjlp->id)->whereDate('tanggal', $today)->first();
+        $check    = $this->service->checkOutAllowed($absensi, $shift, $now, $today);
+
+        if (!$check['allowed']) {
+            return redirect()->route('absen.index')->with('error', $check['reason']);
+        }
+
+        $fotoPath = $this->service->storeSelfiePhoto($request->file('foto'), 'pulang', $pjlp);
+        $absensi  = $this->service->processAbsenPulang(
+            $absensi, $now, $fotoPath,
+            $request->filled('latitude')  ? (float) $request->latitude  : null,
+            $request->filled('longitude') ? (float) $request->longitude : null,
+        );
+
+        AuditLog::log('Absen pulang selfie', $absensi, null, $absensi->toArray());
+
+        return redirect()->route('absen.index')
+            ->with('success', 'Absen pulang berhasil dicatat pukul ' . $now->format('H:i') . '.');
+    }
+
+    /**
+     * Jadwal Saya — kalender shift bulan ini untuk PJLP yang login.
+     */
+    public function jadwalSaya(Request $request)
+    {
+        $pjlp = auth()->user()->pjlp;
+
+        if (!$pjlp) {
+            return redirect()->route('dashboard')->with('error', 'Profil PJLP tidak ditemukan.');
+        }
+
+        $bulan = (int) $request->input('bulan', now()->month);
+        $tahun = (int) $request->input('tahun', now()->year);
+
+        $startOfMonth = Carbon::create($tahun, $bulan, 1)->startOfMonth();
+        $endOfMonth   = $startOfMonth->copy()->endOfMonth();
+
+        // Ambil jadwal harian bulan ini
+        $jadwalMap = $this->service->getJadwalHarianMap($pjlp, $startOfMonth, $endOfMonth);
+
+        // Ambil absensi bulan ini
+        $absensiMap = \App\Models\Absensi::where('pjlp_id', $pjlp->id)
+            ->whereYear('tanggal', $tahun)
+            ->whereMonth('tanggal', $bulan)
+            ->get()
+            ->keyBy(fn ($a) => Carbon::parse($a->tanggal)->format('Y-m-d'));
+
+        // Susun data per hari
+        $hariList = [];
+        $today    = Carbon::today();
+        for ($d = $startOfMonth->copy(); $d->lte($endOfMonth); $d->addDay()) {
+            $key     = $d->format('Y-m-d');
+            $jadwal  = $jadwalMap[$key] ?? null;
+            $absensi = $absensiMap[$key] ?? null;
+            $shift   = $jadwal['shift'] ?? null;
+            $isKerja = $jadwal['is_kerja'] ?? false;
+
+            $windowMasuk  = ($isKerja && $shift) ? $this->service->getWindowMasuk($shift, $d->copy()) : null;
+            $windowPulang = ($isKerja && $shift) ? $this->service->getWindowPulang($shift, $d->copy()) : null;
+
+            $hariList[] = [
+                'tanggal'       => $d->copy(),
+                'is_kerja'      => $isKerja,
+                'shift'         => $shift,
+                'absensi'       => $absensi,
+                'window_masuk'  => $windowMasuk,
+                'window_pulang' => $windowPulang,
+                'is_today'      => $d->isSameDay($today),
+                'is_past'       => $d->lt($today),
+            ];
+        }
+
+        return view('absensi.selfie.jadwal-saya', compact(
+            'pjlp', 'hariList', 'bulan', 'tahun'
+        ));
+    }
+
+    /**
+     * Rekap absensi — summary per PJLP atau detail per hari jika pjlp_id diberikan.
+     */
+    public function rekapAbsensi(Request $request)
+    {
+        $user = auth()->user();
+
+        abort_unless(
+            $user->canAny(['absensi.view-unit', 'absensi.view-all']),
+            403
+        );
+
+        $bulan = (int) $request->input('bulan', now()->month);
+        $tahun       = (int) $request->input('tahun', now()->year);
+        $bulanCarbon = Carbon::create($tahun, $bulan, 1);
+
+        // Trigger alpha detection (Opsi C)
+        if ($user->can('absensi.view-all')) {
+            $this->service->markAlphaAll($bulanCarbon);
+        } elseif ($user->can('absensi.view-unit') && $user->unit) {
+            $this->service->markAlphaForUnit($user->unit, $bulanCarbon);
+        }
+
+        // Jika ada pjlp_id → tampilkan detail per hari untuk 1 PJLP
+        if ($request->filled('pjlp_id')) {
+            return $this->rekapDetail($request, $bulan, $tahun, $bulanCarbon);
+        }
+
+        // --- Summary: daftar PJLP dengan rekapan sebulan ---
+        $pjlpQuery = Pjlp::active()->with('user')->orderBy('nama');
+
+        if (!$user->can('absensi.view-all') && $user->unit) {
+            $pjlpQuery->unit($user->unit);
+        }
+
+        if ($request->filled('search')) {
+            $pjlpQuery->where('nama', 'like', '%' . $request->search . '%');
+        }
+
+        $pjlpList    = $pjlpQuery->get();
+        $startOfMonth = $bulanCarbon->copy()->startOfMonth();
+        $endOfMonth   = $bulanCarbon->copy()->endOfMonth();
+
+        // Ambil semua absensi bulan ini sekaligus (eager)
+        $pjlpIds     = $pjlpList->pluck('id');
+        $absensiMap  = Absensi::whereIn('pjlp_id', $pjlpIds)
+            ->whereYear('tanggal', $tahun)
+            ->whereMonth('tanggal', $bulan)
+            ->with('shift')
+            ->get()
+            ->groupBy('pjlp_id');
+
+        // Hitung jadwal hari kerja per PJLP sebulan (dari jadwal/jadwal_shift_cs)
+        $jadwalMap = $this->service->getJadwalBulananMap($pjlpList, $startOfMonth, $endOfMonth);
+
+        // Susun summary per PJLP
+        $summaryList = $pjlpList->map(function (Pjlp $pjlp) use ($absensiMap, $jadwalMap) {
+            $absensiPjlp  = $absensiMap->get($pjlp->id, collect());
+            $jadwalPjlp   = $jadwalMap[$pjlp->id] ?? collect();
+
+            $hariKerja    = $jadwalPjlp->count();
+            $totalAlpha   = $absensiPjlp->where('status.value', 'alpha')->count();
+            $totalIzin    = $absensiPjlp->whereIn('status.value', ['izin', 'cuti'])->count();
+
+            // Total telat (menit)
+            $totalTelatMenit = $absensiPjlp
+                ->where('status.value', 'terlambat')
+                ->sum('menit_terlambat');
+
+            // Total pulang cepat (menit) — hanya dari yang ada absensi + shift
+            $totalPulangCepatMenit = 0;
+            foreach ($absensiPjlp as $abs) {
+                if (!$abs->shift) continue;
+                $tgl          = Carbon::parse($abs->tanggal);
+                $shiftSelesai = Carbon::parse($tgl->format('Y-m-d') . ' ' . Carbon::parse($abs->shift->jam_selesai)->format('H:i:s'));
+                if ($shiftSelesai->lte(Carbon::parse($tgl->format('Y-m-d') . ' ' . Carbon::parse($abs->shift->jam_mulai)->format('H:i:s')))) {
+                    $shiftSelesai->addDay();
+                }
+                if ($abs->jam_masuk && !$abs->jam_pulang) {
+                    $totalPulangCepatMenit += 225;
+                } elseif ($abs->jam_masuk && $abs->jam_pulang) {
+                    $jamPulang = Carbon::parse($abs->jam_pulang);
+                    $selisih   = (int) $jamPulang->diffInMinutes($shiftSelesai, false);
+                    if ($selisih > 0) {
+                        $totalPulangCepatMenit += $selisih;
+                    }
+                }
+            }
+
+            return [
+                'pjlp'               => $pjlp,
+                'hari_kerja'         => $hariKerja,
+                'total_alpha'        => $totalAlpha,
+                'total_izin'         => $totalIzin,
+                'total_telat_menit'  => $totalTelatMenit,
+                'total_pulang_cepat' => $totalPulangCepatMenit,
+            ];
+        });
+
+        return view('absensi.selfie.rekap', compact('summaryList', 'bulan', 'tahun'));
+    }
+
+    /**
+     * Koreksi absensi manual oleh koordinator/admin.
+     */
+    public function simpanKoreksi(KoreksiAbsensiRequest $request)
+    {
+        $user    = auth()->user();
+        $pjlp    = Pjlp::findOrFail($request->pjlp_id);
+        $tanggal = Carbon::parse($request->tanggal);
+
+        if (!$user->can('absensi.view-all') && $user->unit) {
+            abort_if(
+                $pjlp->unit !== $user->unit,
+                403,
+                'Anda tidak memiliki akses ke data PJLP unit lain.'
+            );
+        }
+
+        $absensi = Absensi::firstOrNew([
+            'pjlp_id' => $pjlp->id,
+            'tanggal' => $tanggal->toDateString(),
+        ]);
+
+        $before = $absensi->exists ? $absensi->toArray() : null;
+
+        $absensi->status      = $request->status;
+        $absensi->sumber_data = SumberDataAbsensi::MANUAL;
+        $absensi->keterangan  = $request->keterangan;
+
+        if ($request->filled('jam_masuk')) {
+            $absensi->jam_masuk = $tanggal->format('Y-m-d') . ' ' . $request->jam_masuk . ':00';
+        }
+        if ($request->filled('jam_pulang')) {
+            $absensi->jam_pulang = $tanggal->format('Y-m-d') . ' ' . $request->jam_pulang . ':00';
+        }
+
+        $absensi->save();
+
+        AuditLog::log('Koreksi absensi manual', $absensi, $before, $absensi->toArray());
+
+        $bulan = $tanggal->month;
+        $tahun = $tanggal->year;
+
+        return redirect()
+            ->route('absensi.rekap', ['pjlp_id' => $pjlp->id, 'bulan' => $bulan, 'tahun' => $tahun])
+            ->with('success', 'Koreksi absensi ' . $pjlp->nama . ' tanggal ' . $tanggal->format('d/m/Y') . ' berhasil disimpan.');
+    }
+
+    /**
+     * Export rekap absensi ke Excel.
+     */
+    public function exportRekap(Request $request)
+    {
+        abort_unless(
+            auth()->user()->canAny(['absensi.view-unit', 'absensi.view-all']),
+            403
+        );
+
+        $bulan = (int) $request->input('bulan', now()->month);
+        $tahun = (int) $request->input('tahun', now()->year);
+        $user  = auth()->user();
+
+        $unitFilter = null;
+        if (!$user->can('absensi.view-all') && $user->unit) {
+            $unitFilter = $user->unit->value;
+        }
+
+        $filename = 'rekap-absensi-' . str_pad($bulan, 2, '0', STR_PAD_LEFT) . '-' . $tahun . '.xlsx';
+
+        return Excel::download(new RekapAbsensiExport($bulan, $tahun, $unitFilter), $filename);
+    }
+
+    /**
+     * Detail absensi per hari untuk satu PJLP.
+     */
+    private function rekapDetail(Request $request, int $bulan, int $tahun, Carbon $bulanCarbon): \Illuminate\View\View
+    {
+        $user = auth()->user();
+        $pjlp = Pjlp::findOrFail($request->pjlp_id);
+
+        // Koordinator hanya boleh lihat PJLP di unitnya sendiri
+        if (!$user->can('absensi.view-all') && $user->unit) {
+            abort_if(
+                $pjlp->unit !== $user->unit,
+                403,
+                'Anda tidak memiliki akses ke data PJLP unit lain.'
+            );
+        }
+
+        $startOfMonth = $bulanCarbon->copy()->startOfMonth();
+        $endOfMonth   = $bulanCarbon->copy()->endOfMonth();
+
+        // Semua absensi PJLP ini bulan ini
+        $absensiMap = Absensi::where('pjlp_id', $pjlp->id)
+            ->whereYear('tanggal', $tahun)
+            ->whereMonth('tanggal', $bulan)
+            ->with('shift')
+            ->get()
+            ->keyBy(fn($a) => Carbon::parse($a->tanggal)->format('Y-m-d'));
+
+        // Semua jadwal PJLP ini bulan ini
+        $jadwalMap = $this->service->getJadwalHarianMap($pjlp, $startOfMonth, $endOfMonth);
+
+        // Generate semua hari dalam sebulan
+        $hariList = [];
+        for ($d = $startOfMonth->copy(); $d->lte($endOfMonth); $d->addDay()) {
+            $key      = $d->format('Y-m-d');
+            $absensi  = $absensiMap[$key] ?? null;
+            $jadwal   = $jadwalMap[$key] ?? null;
+
+            $hariList[] = [
+                'tanggal' => $d->copy(),
+                'shift'   => $jadwal['shift'] ?? null,
+                'is_kerja'=> $jadwal['is_kerja'] ?? false,
+                'absensi' => $absensi,
+            ];
+        }
+
+        return view('absensi.selfie.rekap_detail', compact('pjlp', 'hariList', 'bulan', 'tahun'));
+    }
+}

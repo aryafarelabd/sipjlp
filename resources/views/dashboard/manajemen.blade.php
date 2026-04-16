@@ -42,7 +42,7 @@
                         </div>
                     </div>
                     <div class="col-auto">
-                        <a href="{{ route('laporan.absensi') }}" class="btn btn-light">
+                        <a href="{{ route('absensi.rekap') }}" class="btn btn-light">
                             <i class="ti ti-report me-1"></i> Lihat Laporan
                         </a>
                     </div>
@@ -122,11 +122,11 @@
                 <div class="card">
                     <div class="card-header">
                         <h3 class="card-title">
-                            <i class="ti ti-fingerprint me-2 text-green"></i>
-                            Rekap Absensi Bulan Ini
+                            <i class="ti ti-camera-selfie me-2 text-green"></i>
+                            Rekap Absensi Selfie Bulan Ini
                         </h3>
                         <div class="card-actions">
-                            <a href="{{ route('laporan.absensi') }}" class="btn btn-sm btn-outline-primary">
+                            <a href="{{ route('absensi.rekap') }}" class="btn btn-sm btn-outline-primary">
                                 Lihat Detail <i class="ti ti-arrow-right ms-1"></i>
                             </a>
                         </div>
@@ -136,32 +136,32 @@
                             <div class="col-3">
                                 <div class="card card-sm bg-success-lt">
                                     <div class="card-body text-center py-4">
-                                        <div class="h1 mb-1 text-success">{{ $rekapAbsensi['hari_aktif'] ?? 0 }}</div>
-                                        <div class="text-muted fw-medium">Hari Aktif</div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-3">
-                                <div class="card card-sm bg-primary-lt">
-                                    <div class="card-body text-center py-4">
-                                        <div class="h1 mb-1 text-primary">{{ $rekapAbsensi['total_scan'] ?? 0 }}</div>
-                                        <div class="text-muted fw-medium">Total Scan</div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-3">
-                                <div class="card card-sm bg-green-lt">
-                                    <div class="card-body text-center py-4">
-                                        <div class="h1 mb-1 text-green">{{ $rekapAbsensi['scan_masuk'] ?? 0 }}</div>
-                                        <div class="text-muted fw-medium">Scan Masuk</div>
+                                        <div class="h1 mb-1 text-success">{{ $rekapAbsensi['total_hadir'] ?? 0 }}</div>
+                                        <div class="text-muted fw-medium">Hadir</div>
                                     </div>
                                 </div>
                             </div>
                             <div class="col-3">
                                 <div class="card card-sm bg-danger-lt">
                                     <div class="card-body text-center py-4">
-                                        <div class="h1 mb-1 text-danger">{{ $rekapAbsensi['scan_pulang'] ?? 0 }}</div>
-                                        <div class="text-muted fw-medium">Scan Pulang</div>
+                                        <div class="h1 mb-1 text-danger">{{ $rekapAbsensi['total_alpha'] ?? 0 }}</div>
+                                        <div class="text-muted fw-medium">Alpha</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-3">
+                                <div class="card card-sm bg-info-lt">
+                                    <div class="card-body text-center py-4">
+                                        <div class="h1 mb-1 text-info">{{ $rekapAbsensi['total_izin'] ?? 0 }}</div>
+                                        <div class="text-muted fw-medium">Izin/Cuti</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-3">
+                                <div class="card card-sm bg-warning-lt">
+                                    <div class="card-body text-center py-4">
+                                        <div class="h1 mb-1 text-warning">{{ $rekapAbsensi['total_telat'] ?? 0 }}</div>
+                                        <div class="text-muted fw-medium" style="font-size:0.75rem">Telat (mnt)</div>
                                     </div>
                                 </div>
                             </div>
@@ -227,11 +227,11 @@
             <div class="card-body">
                 <div class="row g-3">
                     <div class="col-6 col-md-4">
-                        <a href="{{ route('laporan.absensi') }}" class="card card-link card-link-pop text-center p-4">
+                        <a href="{{ route('absensi.rekap') }}" class="card card-link card-link-pop text-center p-4">
                             <span class="avatar avatar-xl bg-green-lt mb-3 mx-auto">
                                 <i class="ti ti-fingerprint fs-1"></i>
                             </span>
-                            <div class="fw-medium fs-4">Laporan Absensi</div>
+                            <div class="fw-medium fs-4">Rekap Absensi</div>
                             <div class="text-muted small">Rekap kehadiran PJLP</div>
                         </a>
                     </div>
@@ -245,11 +245,11 @@
                         </a>
                     </div>
                     <div class="col-6 col-md-4">
-                        <a href="{{ route('laporan.lembar-kerja') }}" class="card card-link card-link-pop text-center p-4">
+                        <a href="{{ route('lembar-kerja-cs.index') }}" class="card card-link card-link-pop text-center p-4">
                             <span class="avatar avatar-xl bg-blue-lt mb-3 mx-auto">
                                 <i class="ti ti-clipboard-list fs-1"></i>
                             </span>
-                            <div class="fw-medium fs-4">Laporan Lembar Kerja</div>
+                            <div class="fw-medium fs-4">Lembar Kerja CS</div>
                             <div class="text-muted small">Rekap hasil kerja</div>
                         </a>
                     </div>
