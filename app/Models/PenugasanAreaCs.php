@@ -15,7 +15,7 @@ class PenugasanAreaCs extends Model
     protected $fillable = [
         'area_id',
         'pjlp_id',
-        'shift',
+        'shift_id',
         'tanggal_mulai',
         'tanggal_selesai',
         'is_active',
@@ -37,9 +37,14 @@ class PenugasanAreaCs extends Model
         return $this->belongsTo(Pjlp::class, 'pjlp_id');
     }
 
+    public function shift(): BelongsTo
+    {
+        return $this->belongsTo(Shift::class, 'shift_id');
+    }
+
     public function getShiftNamaAttribute(): string
     {
-        return JadwalAktivitasCs::SHIFT[$this->shift] ?? '-';
+        return $this->shift?->nama ?? '-';
     }
 
     public function isActiveOnDate($date): bool
@@ -76,9 +81,9 @@ class PenugasanAreaCs extends Model
         return $query->where('pjlp_id', $pjlpId);
     }
 
-    public function scopeByShift($query, $shift)
+    public function scopeByShift($query, $shiftId)
     {
-        return $query->where('shift', $shift);
+        return $query->where('shift_id', $shiftId);
     }
 
     public function scopeActiveOnDate($query, $date)
