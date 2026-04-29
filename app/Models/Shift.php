@@ -13,7 +13,11 @@ class Shift extends Model
     protected $fillable = [
         'nama',
         'jam_mulai',
+        'bi',
+        'ai',
         'jam_selesai',
+        'bo',
+        'ao',
         'toleransi_terlambat',
         'is_active',
     ];
@@ -21,9 +25,13 @@ class Shift extends Model
     protected function casts(): array
     {
         return [
-            'jam_mulai' => 'datetime:H:i',
-            'jam_selesai' => 'datetime:H:i',
-            'is_active' => 'boolean',
+            'jam_mulai'  => 'datetime:H:i',
+            'bi'         => 'datetime:H:i',
+            'ai'         => 'datetime:H:i',
+            'jam_selesai'=> 'datetime:H:i',
+            'bo'         => 'datetime:H:i',
+            'ao'         => 'datetime:H:i',
+            'is_active'  => 'boolean',
         ];
     }
 

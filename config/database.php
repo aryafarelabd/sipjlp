@@ -63,6 +63,19 @@ return [
             ]) : [],
         ],
 
+        'npis' => [
+            'driver'    => 'mysql',
+            'host'      => env('NPIS_DB_HOST', '10.10.10.10'),
+            'port'      => env('NPIS_DB_PORT', '3306'),
+            'database'  => env('NPIS_DB_DATABASE', 'ekincipayung'),
+            'username'  => env('NPIS_DB_USERNAME', 'rsudcipayung'),
+            'password'  => env('NPIS_DB_PASSWORD', ''),
+            'charset'   => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'prefix'    => '',
+            'strict'    => false,
+        ],
+
         'mariadb' => [
             'driver' => 'mariadb',
             'url' => env('DB_URL'),

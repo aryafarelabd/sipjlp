@@ -23,10 +23,14 @@ class ShiftController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'nama' => 'required|string|max:100',
-            'jam_mulai' => 'required|date_format:H:i',
-            'jam_selesai' => 'required|date_format:H:i',
-            'toleransi_terlambat' => 'required|integer|min:0|max:60',
+            'nama'                => 'required|string|max:100',
+            'jam_mulai'           => 'required|date_format:H:i',
+            'bi'                  => 'nullable|date_format:H:i',
+            'ai'                  => 'nullable|date_format:H:i',
+            'jam_selesai'         => 'required|date_format:H:i',
+            'bo'                  => 'nullable|date_format:H:i',
+            'ao'                  => 'nullable|date_format:H:i',
+            'toleransi_terlambat' => 'required|integer|min:0|max:120',
         ]);
 
         $shift = Shift::create($validated);
@@ -45,12 +49,18 @@ class ShiftController extends Controller
     public function update(Request $request, Shift $shift)
     {
         $validated = $request->validate([
-            'nama' => 'required|string|max:100',
-            'jam_mulai' => 'required|date_format:H:i',
-            'jam_selesai' => 'required|date_format:H:i',
-            'toleransi_terlambat' => 'required|integer|min:0|max:60',
-            'is_active' => 'required|boolean',
+            'nama'                => 'required|string|max:100',
+            'jam_mulai'           => 'required|date_format:H:i',
+            'bi'                  => 'nullable|date_format:H:i',
+            'ai'                  => 'nullable|date_format:H:i',
+            'jam_selesai'         => 'required|date_format:H:i',
+            'bo'                  => 'nullable|date_format:H:i',
+            'ao'                  => 'nullable|date_format:H:i',
+            'toleransi_terlambat' => 'required|integer|min:0|max:120',
+            'is_active'           => 'boolean',
         ]);
+
+        $validated['is_active'] = $request->boolean('is_active');
 
         $dataLama = $shift->toArray();
         $shift->update($validated);
