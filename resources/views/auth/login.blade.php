@@ -37,11 +37,11 @@
                 @csrf
                 <div class="mb-3">
                     <label class="form-label">
-                        <i class="ti ti-user me-1 text-muted"></i> Email atau NIP
+                        <i class="ti ti-user me-1 text-muted"></i> Username / NIP / Email
                     </label>
                     <input type="text" name="login" class="form-control @error('login') is-invalid @enderror"
-                        placeholder="contoh@email.com atau NIP" value="{{ old('login') }}" required autofocus>
-                    <div class="form-hint">Gunakan email atau NIP untuk login</div>
+                        placeholder="username, NIP, atau email" value="{{ old('login') }}" required autofocus>
+                    <div class="form-hint">Gunakan username, NIP, atau email untuk login</div>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">

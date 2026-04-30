@@ -26,8 +26,14 @@ class LoginController extends Controller
 
         $loginInput = $request->input('login');
 
-        // Deteksi otomatis: mengandung '@' → email, selainnya → NIP
-        $field = str_contains($loginInput, '@') ? 'email' : 'nip';
+        // Deteksi otomatis: '@' → email, angka semua → NIP, lainnya → username
+        if (str_contains($loginInput, '@')) {
+            $field = 'email';
+        } elseif (ctype_digit($loginInput)) {
+            $field = 'nip';
+        } else {
+            $field = 'username';
+        }
 
         $credentials = [
             $field     => $loginInput,
