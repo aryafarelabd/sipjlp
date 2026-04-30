@@ -43,7 +43,7 @@
     </div>
 
     @php
-        $totalHariKerja   = collect($hariList)->where('is_kerja', true)->count();
+        $totalHariKerja   = collect($hariList)->filter(fn($h) => $h['is_kerja'] || $h['absensi'])->count();
         $totalAlpha       = collect($hariList)->filter(fn($h) => $h['absensi']?->status?->value === 'alpha')->count();
         $totalIzin        = collect($hariList)->filter(fn($h) => in_array($h['absensi']?->status?->value, ['izin', 'cuti', 'sakit']))->count();
         $totalTelatMenit  = collect($hariList)->sum(fn($h) => $h['absensi']?->menit_terlambat ?? 0);

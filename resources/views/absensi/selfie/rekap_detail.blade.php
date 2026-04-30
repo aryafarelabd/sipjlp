@@ -4,20 +4,7 @@
 
 @push('styles')
 <style>
-    .absensi-thumb {
-        width: 44px;
-        height: 44px;
-        object-fit: cover;
-        border-radius: 6px;
-        cursor: pointer;
-        border: 2px solid transparent;
-        transition: border-color .15s;
-    }
-    .absensi-thumb:hover { border-color: var(--tblr-primary); }
-    .modal-img-preview { max-width: 100%; border-radius: 8px; }
-    .geo-link { font-size: 0.78rem; white-space: nowrap; }
     .absen-time { font-size: 0.95rem; font-weight: 600; line-height: 1.2; }
-    .absen-meta { font-size: 0.75rem; color: var(--tblr-muted); }
     tr.is-today { background-color: rgba(var(--tblr-primary-rgb), 0.05); }
     tr.is-libur td { color: var(--tblr-muted); }
 </style>
@@ -47,7 +34,7 @@
 
     {{-- Summary chips --}}
     @php
-        $totalHariKerja   = collect($hariList)->where('is_kerja', true)->count();
+        $totalHariKerja   = collect($hariList)->filter(fn($h) => $h['is_kerja'] || $h['absensi'])->count();
         $totalAlpha       = collect($hariList)->filter(fn($h) => $h['absensi']?->status?->value === 'alpha')->count();
         $totalIzin        = collect($hariList)->filter(fn($h) => in_array($h['absensi']?->status?->value, ['izin','cuti']))->count();
         $totalTelatMenit  = collect($hariList)->sum(fn($h) => $h['absensi']?->menit_terlambat ?? 0);
@@ -175,33 +162,8 @@
                             {{-- Masuk --}}
                             <td>
                                 @if($absensi?->jam_masuk)
-                                    <div class="d-flex align-items-start gap-2">
-                                        @if($absensi->foto_masuk_url)
-                                            <img src="{{ $absensi->foto_masuk_url }}"
-                                                 class="absensi-thumb"
-                                                 data-bs-toggle="modal"
-                                                 data-bs-target="#modalFoto"
-                                                 data-img="{{ $absensi->foto_masuk_url }}"
-                                                 data-label="Foto Masuk — {{ $tanggal->translatedFormat('d M Y') }}"
-                                                 title="Lihat foto masuk">
-                                        @else
-                                            <div class="absensi-thumb bg-gray-100 d-flex align-items-center justify-content-center text-muted">
-                                                <i class="ti ti-photo-off"></i>
-                                            </div>
-                                        @endif
-                                        <div>
-                                            <div class="absen-time text-success">
-                                                {{ \Carbon\Carbon::parse($absensi->jam_masuk)->format('H:i') }}
-                                            </div>
-                                            @if($absensi->latitude_masuk && $absensi->longitude_masuk)
-                                                <a href="https://www.google.com/maps?q={{ $absensi->latitude_masuk }},{{ $absensi->longitude_masuk }}"
-                                                   target="_blank" class="geo-link text-azure">
-                                                    <i class="ti ti-map-pin me-1"></i>Lokasi
-                                                </a>
-                                            @else
-                                                <span class="absen-meta">Lokasi N/A</span>
-                                            @endif
-                                        </div>
+                                    <div class="absen-time text-success">
+                                        {{ \Carbon\Carbon::parse($absensi->jam_masuk)->format('H:i') }}
                                     </div>
                                 @else
                                     <span class="text-muted">-</span>
@@ -211,33 +173,8 @@
                             {{-- Pulang --}}
                             <td>
                                 @if($absensi?->jam_pulang)
-                                    <div class="d-flex align-items-start gap-2">
-                                        @if($absensi->foto_pulang_url)
-                                            <img src="{{ $absensi->foto_pulang_url }}"
-                                                 class="absensi-thumb"
-                                                 data-bs-toggle="modal"
-                                                 data-bs-target="#modalFoto"
-                                                 data-img="{{ $absensi->foto_pulang_url }}"
-                                                 data-label="Foto Pulang — {{ $tanggal->translatedFormat('d M Y') }}"
-                                                 title="Lihat foto pulang">
-                                        @else
-                                            <div class="absensi-thumb bg-gray-100 d-flex align-items-center justify-content-center text-muted">
-                                                <i class="ti ti-photo-off"></i>
-                                            </div>
-                                        @endif
-                                        <div>
-                                            <div class="absen-time text-blue">
-                                                {{ \Carbon\Carbon::parse($absensi->jam_pulang)->format('H:i') }}
-                                            </div>
-                                            @if($absensi->latitude_pulang && $absensi->longitude_pulang)
-                                                <a href="https://www.google.com/maps?q={{ $absensi->latitude_pulang }},{{ $absensi->longitude_pulang }}"
-                                                   target="_blank" class="geo-link text-azure">
-                                                    <i class="ti ti-map-pin me-1"></i>Lokasi
-                                                </a>
-                                            @else
-                                                <span class="absen-meta">Lokasi N/A</span>
-                                            @endif
-                                        </div>
+                                    <div class="absen-time text-blue">
+                                        {{ \Carbon\Carbon::parse($absensi->jam_pulang)->format('H:i') }}
                                     </div>
                                 @else
                                     <span class="text-muted">-</span>
@@ -386,20 +323,6 @@
     </div>
 </div>
 
-{{-- Modal Preview Foto --}}
-<div class="modal modal-blur fade" id="modalFoto" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-sm" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="modalFotoLabel">Foto Absensi</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body text-center p-2">
-                <img src="" id="modalFotoImg" class="modal-img-preview" alt="Foto absensi">
-            </div>
-        </div>
-    </div>
-</div>
 @endsection
 
 @push('scripts')
@@ -426,18 +349,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // Modal Foto
-    const modalFoto = document.getElementById('modalFoto');
-    if (modalFoto) {
-        modalFoto.addEventListener('show.bs.modal', function (e) {
-            const trigger = e.relatedTarget;
-            document.getElementById('modalFotoImg').src = trigger.dataset.img;
-            document.getElementById('modalFotoLabel').textContent = trigger.dataset.label;
-        });
-        modalFoto.addEventListener('hidden.bs.modal', function () {
-            document.getElementById('modalFotoImg').src = '';
-        });
-    }
 });
 </script>
 @endpush

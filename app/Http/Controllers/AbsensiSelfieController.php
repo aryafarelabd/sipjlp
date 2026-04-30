@@ -117,7 +117,15 @@ class AbsensiSelfieController extends Controller
             $absensiPjlp  = $absensiMap->get($pjlp->id, collect());
             $jadwalPjlp   = $jadwalMap[$pjlp->id] ?? collect();
 
-            $hariKerja    = $jadwalPjlp->count();
+            $tanggalKerja = $jadwalPjlp
+                ->map(fn ($info) => $info['jadwal']?->tanggal
+                    ? Carbon::parse($info['jadwal']->tanggal)->toDateString()
+                    : null)
+                ->filter()
+                ->merge($absensiPjlp->pluck('tanggal')->map(fn ($tanggal) => Carbon::parse($tanggal)->toDateString()))
+                ->unique();
+
+            $hariKerja    = $tanggalKerja->count();
             $totalAlpha   = $absensiPjlp->where('status.value', 'alpha')->count();
             $totalIzin    = $absensiPjlp->whereIn('status.value', ['izin', 'cuti'])->count();
 
