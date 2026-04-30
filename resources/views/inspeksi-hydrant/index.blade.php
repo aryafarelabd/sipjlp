@@ -30,16 +30,6 @@
         </div>
         @endif
 
-        <div class="alert alert-info mb-3">
-            <i class="ti ti-info-circle me-2"></i>
-            Pengisian laporan diharapkan sesuai jam dinas yang ditentukan.
-            <div class="mt-1 small">
-                <span class="badge bg-blue-lt text-blue me-1">Shift Pagi 07.00–14.00</span>
-                <span class="badge bg-orange-lt text-orange me-1">Shift Siang 14.00–21.00</span>
-                <span class="badge bg-dark-lt text-dark me-1">Shift Malam 20.30–07.30</span>
-            </div>
-        </div>
-
         <div class="row g-3">
 
             {{-- ── Kolom Kiri: Form ──────────────────────────────────── --}}

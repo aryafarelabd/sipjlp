@@ -122,8 +122,8 @@
                 <div class="card">
                     <div class="card-header">
                         <h3 class="card-title">
-                            <i class="ti ti-camera-selfie me-2 text-green"></i>
-                            Rekap Absensi Selfie Bulan Ini
+                            <i class="ti ti-fingerprint me-2 text-green"></i>
+                            Rekap Absensi Bulan Ini
                         </h3>
                         <div class="card-actions">
                             <a href="{{ route('absensi.rekap') }}" class="btn btn-sm btn-outline-primary">

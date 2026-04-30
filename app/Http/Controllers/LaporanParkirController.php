@@ -3,9 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreLaporanParkirRequest;
-use App\Models\Jadwal;
 use App\Models\LaporanParkir;
 use App\Models\LaporanParkirFoto;
+use App\Models\Shift;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -20,15 +20,9 @@ class LaporanParkirController extends Controller
             return redirect()->route('dashboard')->with('error', 'Profil PJLP tidak ditemukan.');
         }
 
-        // Cek jadwal security hari ini (harus published)
-        $jadwal = Jadwal::with('shift')
-            ->where('pjlp_id', $pjlp->id)
-            ->whereDate('tanggal', today())
-            ->where('is_published', true)
-            ->first();
-
-        $shift    = $jadwal?->shift;
-        $hasShift = $jadwal && $shift;
+        $shifts = Shift::where('is_active', true)
+            ->orderBy('jam_mulai')
+            ->get();
 
         // Laporan hari ini milik petugas ini
         $laporanHariIni = LaporanParkir::with('fotos')
@@ -41,7 +35,7 @@ class LaporanParkirController extends Controller
         $laporanRoda2 = $laporanHariIni->where('jenis', 'roda_2');
 
         return view('laporan-parkir.index', compact(
-            'pjlp', 'jadwal', 'shift', 'hasShift', 'laporanRoda4', 'laporanRoda2'
+            'pjlp', 'shifts', 'laporanRoda4', 'laporanRoda2'
         ));
     }
 
@@ -54,19 +48,9 @@ class LaporanParkirController extends Controller
             return back()->with('error', 'Profil PJLP tidak ditemukan.');
         }
 
-        $jadwal = Jadwal::with('shift')
-            ->where('pjlp_id', $pjlp->id)
-            ->whereDate('tanggal', today())
-            ->where('is_published', true)
-            ->first();
-
-        if (!$jadwal) {
-            return back()->with('error', 'Anda tidak memiliki jadwal shift hari ini.');
-        }
-
         $laporan = LaporanParkir::create([
             'pjlp_id'          => $pjlp->id,
-            'shift_id'         => $jadwal->shift_id,
+            'shift_id'         => $request->shift_id,
             'tanggal'          => today(),
             'jenis'            => $request->jenis,
             'jumlah_kendaraan' => $request->jumlah_kendaraan,

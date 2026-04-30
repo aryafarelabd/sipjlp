@@ -48,7 +48,7 @@ class LembarKerjaPolicy
             return true;
         }
 
-        if ($user->hasRole('koordinator')) {
+        if ($user->isKoordinator()) {
             $pjlp = $lembarKerja->pjlp;
             if ($user->unit && $user->unit->value !== 'all') {
                 return $pjlp->unit->value === $user->unit->value;

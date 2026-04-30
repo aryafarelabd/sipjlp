@@ -19,13 +19,13 @@ class LembarKerjaController extends Controller
         $user = $request->user();
         $query = LembarKerja::with(['pjlp', 'validasi']);
 
-        if ($user->hasRole('pjlp')) {
+        if ($user->isPjlp()) {
             $pjlp = $user->pjlp;
             if (!$pjlp) {
                 return redirect()->route('dashboard')->with('error', 'Profil PJLP tidak ditemukan.');
             }
             $query->forPjlp($pjlp->id);
-        } elseif ($user->hasRole('koordinator')) {
+        } elseif ($user->isKoordinator()) {
             $query->whereHas('pjlp', function ($q) use ($user) {
                 $q->forKoordinator($user);
             });
@@ -103,7 +103,7 @@ class LembarKerjaController extends Controller
                 ->with('error', 'Lembar kerja tidak dapat diedit karena sudah disubmit.');
         }
 
-        if ($user->hasRole('pjlp') && $lembarKerja->pjlp_id !== $user->pjlp?->id) {
+        if ($user->isPjlp() && $lembarKerja->pjlp_id !== $user->pjlp?->id) {
             abort(403);
         }
 
@@ -162,7 +162,7 @@ class LembarKerjaController extends Controller
     {
         $user = auth()->user();
 
-        if ($user->hasRole('pjlp') && $lembarKerja->pjlp_id !== $user->pjlp?->id) {
+        if ($user->isPjlp() && $lembarKerja->pjlp_id !== $user->pjlp?->id) {
             abort(403);
         }
 

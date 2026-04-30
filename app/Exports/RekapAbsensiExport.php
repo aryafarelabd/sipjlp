@@ -74,7 +74,7 @@ class RekapAbsensiExport implements FromCollection, WithHeadings, WithMapping, W
     {
         $bulanLabel = Carbon::create($this->tahun, $this->bulan, 1)->translatedFormat('F Y');
         return [
-            "REKAP ABSENSI SELFIE — {$bulanLabel}",
+            "REKAP ABSENSI — {$bulanLabel}",
             '', '', '', '', '', '', '',
         ];
     }

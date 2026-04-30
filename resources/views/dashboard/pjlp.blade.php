@@ -78,7 +78,7 @@
                     <div class="card-body">
                         <div class="row align-items-center">
                             <div class="col-auto">
-                                <span class="bg-green text-white avatar"><i class="ti ti-camera-selfie"></i></span>
+                                <span class="bg-green text-white avatar"><i class="ti ti-fingerprint"></i></span>
                             </div>
                             <div class="col">
                                 <div class="fw-medium">Hari Hadir</div>
@@ -91,7 +91,7 @@
                                 </div>
                             </div>
                             <div class="col-auto">
-                                <a href="{{ route('jadwal-saya.index') }}" class="text-decoration-none">
+                                <a href="{{ route('absen.index') }}" class="text-decoration-none">
                                     <span class="h2 mb-0 text-green">{{ $rekapAbsensiBulanIni['hari_masuk'] ?? 0 }}</span>
                                 </a>
                             </div>
@@ -202,7 +202,7 @@
                     {{-- Absen (semua) --}}
                     <div class="col-6 col-md-3 col-lg-2">
                         <a href="{{ route('absen.index') }}" class="card card-link card-link-pop text-center p-3 border-success h-100">
-                            <span class="avatar avatar-md bg-success-lt mb-2 mx-auto"><i class="ti ti-camera-selfie fs-3"></i></span>
+                            <span class="avatar avatar-md bg-success-lt mb-2 mx-auto"><i class="ti ti-fingerprint fs-3"></i></span>
                             <div class="fw-medium small text-success">Absen</div>
                         </a>
                     </div>

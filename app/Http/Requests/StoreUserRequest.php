@@ -15,6 +15,7 @@ class StoreUserRequest extends FormRequest
     {
         return [
             'name'     => 'required|string|max:255',
+            'username' => 'nullable|string|max:50|unique:users,username|regex:/^[a-z0-9._]+$/',
             'nip'      => 'nullable|string|digits_between:1,30|unique:users,nip',
             'email'    => 'required|email|max:255|unique:users,email',
             'password' => 'required|min:8|confirmed',
@@ -26,6 +27,8 @@ class StoreUserRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'username.unique' => 'Username sudah digunakan.',
+            'username.regex'  => 'Username hanya boleh berisi huruf kecil, angka, titik, dan underscore.',
             'nip.digits_between' => 'NIP hanya boleh berisi angka (maksimal 30 digit).',
             'nip.unique'         => 'NIP sudah digunakan oleh user lain.',
         ];

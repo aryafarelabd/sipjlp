@@ -1,10 +1,10 @@
 @extends('layouts.app')
 
-@section('title', 'Detail Absensi — ' . $pjlp->nama)
+@section('title', 'Detail Absensi - ' . $pjlp->nama)
 
 @push('styles')
 <style>
-    .selfie-thumb {
+    .absensi-thumb {
         width: 44px;
         height: 44px;
         object-fit: cover;
@@ -13,7 +13,7 @@
         border: 2px solid transparent;
         transition: border-color .15s;
     }
-    .selfie-thumb:hover { border-color: var(--tblr-primary); }
+    .absensi-thumb:hover { border-color: var(--tblr-primary); }
     .modal-img-preview { max-width: 100%; border-radius: 8px; }
     .geo-link { font-size: 0.78rem; white-space: nowrap; }
     .absen-time { font-size: 0.95rem; font-weight: 600; line-height: 1.2; }
@@ -178,14 +178,14 @@
                                     <div class="d-flex align-items-start gap-2">
                                         @if($absensi->foto_masuk_url)
                                             <img src="{{ $absensi->foto_masuk_url }}"
-                                                 class="selfie-thumb"
+                                                 class="absensi-thumb"
                                                  data-bs-toggle="modal"
                                                  data-bs-target="#modalFoto"
                                                  data-img="{{ $absensi->foto_masuk_url }}"
                                                  data-label="Foto Masuk — {{ $tanggal->translatedFormat('d M Y') }}"
                                                  title="Lihat foto masuk">
                                         @else
-                                            <div class="selfie-thumb bg-gray-100 d-flex align-items-center justify-content-center text-muted">
+                                            <div class="absensi-thumb bg-gray-100 d-flex align-items-center justify-content-center text-muted">
                                                 <i class="ti ti-photo-off"></i>
                                             </div>
                                         @endif
@@ -214,14 +214,14 @@
                                     <div class="d-flex align-items-start gap-2">
                                         @if($absensi->foto_pulang_url)
                                             <img src="{{ $absensi->foto_pulang_url }}"
-                                                 class="selfie-thumb"
+                                                 class="absensi-thumb"
                                                  data-bs-toggle="modal"
                                                  data-bs-target="#modalFoto"
                                                  data-img="{{ $absensi->foto_pulang_url }}"
                                                  data-label="Foto Pulang — {{ $tanggal->translatedFormat('d M Y') }}"
                                                  title="Lihat foto pulang">
                                         @else
-                                            <div class="selfie-thumb bg-gray-100 d-flex align-items-center justify-content-center text-muted">
+                                            <div class="absensi-thumb bg-gray-100 d-flex align-items-center justify-content-center text-muted">
                                                 <i class="ti ti-photo-off"></i>
                                             </div>
                                         @endif
@@ -302,7 +302,7 @@
 
                             {{-- Koreksi --}}
                             <td>
-                                @if(!$isFuture)
+                                @if(!$isFuture && auth()->user()->isAdmin())
                                 <button type="button"
                                     class="btn btn-sm btn-ghost-secondary"
                                     title="Koreksi"
@@ -391,11 +391,11 @@
     <div class="modal-dialog modal-dialog-centered modal-sm" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="modalFotoLabel">Foto Selfie</h5>
+                <h5 class="modal-title" id="modalFotoLabel">Foto Absensi</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body text-center p-2">
-                <img src="" id="modalFotoImg" class="modal-img-preview" alt="Foto selfie">
+                <img src="" id="modalFotoImg" class="modal-img-preview" alt="Foto absensi">
             </div>
         </div>
     </div>

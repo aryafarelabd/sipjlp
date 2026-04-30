@@ -100,7 +100,7 @@ class LaporanKecelakaanController extends Controller
 
         if ($user->hasRole('admin') || $user->hasRole('manajemen')) {
             // Admin dan manajemen bisa lihat semua laporan
-        } elseif ($user->hasRole('koordinator')) {
+        } elseif ($user->isKoordinator()) {
             // Koordinator hanya bisa lihat laporan dari unit yang sama
             $laporanKecelakaan->load('user');
             $unitKoordinator = $user->unit?->value;

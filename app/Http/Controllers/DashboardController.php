@@ -36,11 +36,11 @@ class DashboardController extends Controller
     {
         $user = $request->user();
 
-        if ($user->hasRole('pjlp')) {
+        if ($user->hasRole(['pjlp', 'danru'])) {
             return $this->pjlpDashboard($user);
         }
 
-        if ($user->hasRole('koordinator')) {
+        if ($user->hasRole(['koordinator', 'chief'])) {
             return $this->koordinatorDashboard($user);
         }
 
@@ -93,7 +93,7 @@ class DashboardController extends Controller
 
         $cutiPending = $pjlp->cuti()->pending()->latest()->take(5)->get();
 
-        // Rekap absensi bulan ini dari tabel absensi (selfie)
+        // Rekap absensi bulan ini dari tabel absensi.
         $absensiBulanIni = Absensi::where('pjlp_id', $pjlp->id)
             ->whereYear('tanggal', $year)
             ->whereMonth('tanggal', $month)
@@ -185,7 +185,7 @@ class DashboardController extends Controller
         ->where('is_rejected', false)
         ->count();
 
-        // Absensi hari ini unit (dari selfie)
+        // Absensi hari ini unit.
         $pjlpIds = Pjlp::active()->forKoordinator($user)->pluck('id');
         $absensiHariIniQuery = Absensi::whereIn('pjlp_id', $pjlpIds)->whereDate('tanggal', $today);
         $absensiMasukHariIni = (clone $absensiHariIniQuery)->whereNotNull('jam_masuk')->count();
@@ -269,7 +269,7 @@ class DashboardController extends Controller
         $month = $today->month;
         $year = $today->year;
 
-        // Rekap absensi bulan ini (dari selfie)
+        // Rekap absensi bulan ini.
         $absensiBulanIni = Absensi::whereYear('tanggal', $year)
             ->whereMonth('tanggal', $month)
             ->selectRaw('status, COUNT(*) as total')

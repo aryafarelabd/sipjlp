@@ -8,7 +8,7 @@
         <div class="row g-2 align-items-center">
             <div class="col">
                 <h2 class="page-title">Jadwal Shift Security</h2>
-                <div class="text-muted mt-1">Input jadwal shift per PJLP per hari (dikelola oleh Koordinator)</div>
+                <div class="text-muted mt-1">Input jadwal shift per PJLP per hari (dikelola oleh Administrator)</div>
             </div>
             @if($canEdit)
             <div class="col-auto ms-auto d-print-none">

@@ -121,7 +121,7 @@
                         <div class="row align-items-center">
                             <div class="col-auto">
                                 <span class="bg-green text-white avatar">
-                                    <i class="ti ti-camera-selfie"></i>
+                                    <i class="ti ti-fingerprint"></i>
                                 </span>
                             </div>
                             <div class="col">

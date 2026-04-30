@@ -71,7 +71,7 @@ class CutiPolicy
         }
 
         // Koordinator: approve menunggu (CS) atau menunggu_koordinator (security)
-        if ($user->hasRole('koordinator')) {
+        if ($user->isKoordinator()) {
             $statusOk = in_array($cuti->status, [
                 StatusCuti::MENUNGGU,
                 StatusCuti::MENUNGGU_KOORDINATOR,

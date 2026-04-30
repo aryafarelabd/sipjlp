@@ -43,8 +43,8 @@
                 // Unit koordinator: null atau 'all' berarti lihat semua
                 $unitValue = $userUnit?->value ?? 'all';
                 $showCs       = $isAdmin || ($isKoordinator && in_array($unitValue, ['all', 'cleaning']));
-                // Danru & chief juga tampilkan rekap security
-                $showSecurity = $isAdmin || $isDanru || $isChief
+                // Chief/koordinator/admin lihat rekap security; danru tetap seperti anggota security.
+                $showSecurity = $isAdmin || $isChief
                     || ($isKoordinator && in_array($unitValue, ['all', 'security']));
 
                 // PJLP
@@ -73,17 +73,9 @@
                 <li class="nav-item">
                     <a class="nav-link {{ request()->routeIs('absen.index') ? 'active' : '' }}" href="{{ route('absen.index') }}">
                         <span class="nav-link-icon d-md-none d-lg-inline-block">
-                            <i class="ti ti-camera-selfie"></i>
+                            <i class="ti ti-fingerprint"></i>
                         </span>
-                        <span class="nav-link-title">Absen Hari Ini</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('jadwal-saya.index') ? 'active' : '' }}" href="{{ route('jadwal-saya.index') }}">
-                        <span class="nav-link-icon d-md-none d-lg-inline-block">
-                            <i class="ti ti-calendar-user"></i>
-                        </span>
-                        <span class="nav-link-title">Jadwal Saya</span>
+                        <span class="nav-link-title">Rekap Absen Saya</span>
                     </a>
                 </li>
                 @endif
@@ -131,6 +123,7 @@
                      SECTION: ABSENSI
                      Terlihat oleh: koordinator, admin
                 ============================================================ --}}
+                @if(!$isDanru && !$user->hasRole('pjlp'))
                 @canany(['absensi.view-unit', 'absensi.view-all'])
                 <li class="nav-item">
                     <div class="nav-link-title text-uppercase text-muted small px-3 pt-3 pb-1" style="font-size:0.7rem;letter-spacing:.08em;">
@@ -146,12 +139,13 @@
                     </a>
                 </li>
                 @endcanany
+                @endif
 
                 {{-- ============================================================
                      CUTI — section header hanya untuk koordinator/admin (bisa approve)
                      PJLP hanya lihat item flat tanpa header
                 ============================================================ --}}
-                @canany(['cuti.create', 'cuti.view-unit', 'cuti.view-all'])
+                @canany(['cuti.create', 'cuti.view-unit', 'cuti.view-all', 'cuti.approve'])
                 @if($isAdminOrKoordinator)
                 <li class="nav-item">
                     <div class="nav-link-title text-uppercase text-muted small px-3 pt-3 pb-1" style="font-size:0.7rem;letter-spacing:.08em;">
@@ -160,19 +154,51 @@
                 </li>
                 @endif
                 <li class="nav-item">
-                    @can('cuti.approve')
-                    @php $pendingCuti = \App\Models\Cuti::pending()->count(); @endphp
-                    @endcan
-                    <a class="nav-link {{ request()->routeIs('cuti.*') ? 'active' : '' }}" href="{{ route('cuti.index') }}">
+                    <a class="nav-link {{ request()->routeIs('cuti.index', 'cuti.create') || (request()->routeIs('cuti.show') && request('from') !== 'validasi') ? 'active' : '' }}" href="{{ route('cuti.index') }}">
                         <span class="nav-link-icon d-md-none d-lg-inline-block">
                             <i class="ti ti-plane-departure"></i>
                         </span>
                         <span class="nav-link-title">{{ $isAdminOrKoordinator ? 'Pengajuan Cuti' : 'Cuti Saya' }}</span>
-                        @if(!empty($pendingCuti) && $pendingCuti > 0)
+                    </a>
+                </li>
+                @can('cuti.approve')
+                @php
+                    $pendingCutiValidasi = \App\Models\Cuti::query();
+                    if ($user->hasRole('admin')) {
+                        $pendingCutiValidasi->pending();
+                    } elseif ($user->hasRole('danru')) {
+                        $pendingCutiValidasi
+                            ->where('status', \App\Enums\StatusCuti::MENUNGGU_DANRU)
+                            ->where('danru_id', $userPjlp?->id);
+                    } elseif ($user->hasRole('chief')) {
+                        $pendingCutiValidasi
+                            ->where('status', \App\Enums\StatusCuti::MENUNGGU_CHIEF)
+                            ->whereHas('pjlp', fn($q) => $q->where('unit', \App\Enums\UnitType::SECURITY));
+                    } elseif ($user->hasRole('koordinator')) {
+                        $pendingCutiValidasi
+                            ->whereIn('status', [\App\Enums\StatusCuti::MENUNGGU, \App\Enums\StatusCuti::MENUNGGU_KOORDINATOR])
+                            ->whereHas('pjlp', function ($q) use ($user) {
+                                if ($user->unit && $user->unit->value !== 'all') {
+                                    $q->where('unit', $user->unit);
+                                }
+                            });
+                    } else {
+                        $pendingCutiValidasi->whereRaw('1 = 0');
+                    }
+                    $pendingCuti = $pendingCutiValidasi->count();
+                @endphp
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('cuti.validasi') || (request()->routeIs('cuti.show') && request('from') === 'validasi') ? 'active' : '' }}" href="{{ route('cuti.validasi') }}">
+                        <span class="nav-link-icon d-md-none d-lg-inline-block">
+                            <i class="ti ti-clipboard-check"></i>
+                        </span>
+                        <span class="nav-link-title">Validasi Cuti</span>
+                        @if($pendingCuti > 0)
                         <span class="badge badge-sm bg-red ms-auto">{{ $pendingCuti }}</span>
                         @endif
                     </a>
                 </li>
+                @endcan
                 @endcanany
 
                 {{-- ============================================================
@@ -257,6 +283,7 @@
                             <span class="nav-link-title">Rekap Bank Sampah</span>
                         </a>
                     </li>
+                    @if($isKoordinator)
                     <li class="nav-item">
                         <a class="nav-link {{ request()->routeIs('gerakan-jumat-sehat.*') ? 'active' : '' }}" href="{{ route('gerakan-jumat-sehat.rekap') }}">
                             <span class="nav-link-icon d-md-none d-lg-inline-block">
@@ -265,6 +292,7 @@
                             <span class="nav-link-title">Rekap Jumat Sehat</span>
                         </a>
                     </li>
+                    @endif
 
                 @elseif($isCleaningPjlp)
                 <li class="nav-item">
@@ -336,7 +364,7 @@
                         Security
                     </div>
                 </li>
-                @if($showSecurity)
+                @if($isAdmin)
                 <li class="nav-item">
                     <a class="nav-link {{ request()->routeIs('jadwal-security.*') ? 'active' : '' }}" href="{{ route('jadwal-security.index') }}">
                         <span class="nav-link-icon d-md-none d-lg-inline-block">
@@ -424,7 +452,7 @@
                     </a>
                 </li>
                 @endif
-                @if($showSecurity)
+                @if($isChief || $isKoordinator)
                 <li class="nav-item">
                     <a class="nav-link {{ request()->routeIs('gerakan-jumat-sehat.rekap') ? 'active' : '' }}" href="{{ route('gerakan-jumat-sehat.rekap') }}">
                         <span class="nav-link-icon d-md-none d-lg-inline-block">
@@ -532,7 +560,7 @@
                 </li>
                 @endcan
                 @cannot('master.manage')
-                @if($showSecurity && auth()->user()->can('jadwal.manage'))
+                @if($isAdmin && $showSecurity)
                 <li class="nav-item">
                     <a class="nav-link {{ request()->routeIs('master.lokasi.*') ? 'active' : '' }}" href="{{ route('master.lokasi.index') }}">
                         <span class="nav-link-icon d-md-none d-lg-inline-block">

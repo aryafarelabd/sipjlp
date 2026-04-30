@@ -72,22 +72,24 @@ Route::middleware('auth')->group(function () {
     // PJLP Management
     Route::resource('pjlp', PjlpController::class);
 
-    // Absensi Selfie (mobile) — hanya PJLP
+    // Absensi (read-only, data dari mesin finger) — hanya PJLP
     Route::middleware('can:absensi.view-self')->group(function () {
         Route::get('/absen', [AbsensiSelfieController::class, 'showAbsenPage'])->name('absen.index');
-        Route::post('/absen/masuk', [AbsensiSelfieController::class, 'absenMasuk'])->name('absen.masuk')->middleware('throttle:5,1');
-        Route::post('/absen/pulang', [AbsensiSelfieController::class, 'absenPulang'])->name('absen.pulang')->middleware('throttle:5,1');
-        Route::get('/jadwal-saya', [AbsensiSelfieController::class, 'jadwalSaya'])->name('jadwal-saya.index');
+        Route::redirect('/jadwal-saya', '/absen')->name('jadwal-saya.index');
     });
-    Route::get('/absensi/rekap', [AbsensiSelfieController::class, 'rekapAbsensi'])
-        ->name('absensi.rekap');
-    Route::get('/absensi/rekap/export', [AbsensiSelfieController::class, 'exportRekap'])
-        ->name('absensi.rekap.export');
+    Route::middleware('role:admin|koordinator|chief|manajemen')->group(function () {
+        Route::get('/absensi/rekap', [AbsensiSelfieController::class, 'rekapAbsensi'])
+            ->name('absensi.rekap');
+        Route::get('/absensi/rekap/export', [AbsensiSelfieController::class, 'exportRekap'])
+            ->name('absensi.rekap.export');
+    });
     Route::post('/absensi/koreksi', [AbsensiSelfieController::class, 'simpanKoreksi'])
-        ->name('absensi.koreksi');
+        ->name('absensi.koreksi')
+        ->middleware('role:admin');
 
     // Cuti
     Route::get('/cuti', [CutiController::class, 'index'])->name('cuti.index');
+    Route::get('/cuti/validasi', [CutiController::class, 'validasi'])->name('cuti.validasi');
     Route::get('/cuti/create', [CutiController::class, 'create'])->name('cuti.create');
     Route::post('/cuti', [CutiController::class, 'store'])->name('cuti.store');
     Route::get('/cuti/{cuti}', [CutiController::class, 'show'])->name('cuti.show');
@@ -108,7 +110,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/lembar-kerja/detail/{detail}', [LembarKerjaController::class, 'deleteDetail'])->name('lembar-kerja.detail.destroy');
 
     // Jadwal Shift Security
-    Route::prefix('jadwal-security')->name('jadwal-security.')->middleware('can:jadwal.manage')->group(function () {
+    Route::prefix('jadwal-security')->name('jadwal-security.')->middleware('role:admin')->group(function () {
         Route::get('/', [JadwalSecurityController::class, 'index'])->name('index');
         Route::post('/update', [JadwalSecurityController::class, 'update'])->name('update');
         Route::post('/publish', [JadwalSecurityController::class, 'publish'])->name('publish');
@@ -189,7 +191,8 @@ Route::middleware('auth')->group(function () {
     Route::prefix('gerakan-jumat-sehat')->name('gerakan-jumat-sehat.')->group(function () {
         Route::get('/', [GerakanJumatSehatController::class, 'index'])->name('index');
         Route::post('/', [GerakanJumatSehatController::class, 'store'])->name('store');
-        Route::get('/rekap', [GerakanJumatSehatController::class, 'rekap'])->name('rekap');
+        Route::get('/rekap', [GerakanJumatSehatController::class, 'rekap'])->name('rekap')
+            ->middleware('role:admin|koordinator|chief');
     });
 
     // Laporan Parkir Menginap

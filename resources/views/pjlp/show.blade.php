@@ -122,8 +122,9 @@
                                 <tr>
                                     <th>Tanggal</th>
                                     <th>Jam Masuk</th>
-                                    <th>Jam Keluar</th>
+                                    <th>Jam Pulang</th>
                                     <th>Shift</th>
+                                    <th>Sumber</th>
                                     <th>Status</th>
                                 </tr>
                             </thead>
@@ -133,38 +134,33 @@
                                         <td>{{ $absensi->tanggal?->translatedFormat('d M Y') ?? '-' }}</td>
                                         <td>
                                             @if($absensi->jam_masuk)
-                                                <span class="{{ $absensi->is_telat ? 'text-danger' : 'text-success' }}">
+                                                <span class="{{ $absensi->status?->value === 'terlambat' ? 'text-danger' : 'text-success' }}">
                                                     {{ \Carbon\Carbon::parse($absensi->jam_masuk)->format('H:i') }}
                                                 </span>
-                                                @if($absensi->is_telat)
-                                                    <small class="text-danger d-block">Terlambat</small>
+                                                @if(($absensi->menit_terlambat ?? 0) > 0)
+                                                    <small class="text-danger d-block">{{ $absensi->menit_terlambat }} menit</small>
                                                 @endif
                                             @else
                                                 <span class="text-muted">-</span>
                                             @endif
                                         </td>
                                         <td>
-                                            @if($absensi->jam_keluar)
-                                                {{ \Carbon\Carbon::parse($absensi->jam_keluar)->format('H:i') }}
+                                            @if($absensi->jam_pulang)
+                                                {{ \Carbon\Carbon::parse($absensi->jam_pulang)->format('H:i') }}
                                             @else
                                                 <span class="text-muted">-</span>
                                             @endif
                                         </td>
                                         <td>{{ $absensi->shift?->nama ?? '-' }}</td>
                                         <td>
-                                            @if($absensi->status == 'hadir')
-                                                <span class="badge bg-success">Hadir</span>
-                                            @elseif($absensi->status == 'izin')
-                                                <span class="badge bg-info">Izin</span>
-                                            @elseif($absensi->status == 'sakit')
-                                                <span class="badge bg-warning">Sakit</span>
-                                            @elseif($absensi->status == 'cuti')
-                                                <span class="badge bg-secondary">Cuti</span>
-                                            @elseif($absensi->status == 'alpha')
-                                                <span class="badge bg-danger">Alpha</span>
-                                            @else
-                                                <span class="badge bg-secondary">{{ $absensi->status }}</span>
-                                            @endif
+                                            <span class="badge bg-secondary-lt text-secondary">
+                                                {{ $absensi->sumber_data?->label() ?? '-' }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-{{ $absensi->status?->color() ?? 'secondary' }}">
+                                                {{ $absensi->status?->label() ?? '-' }}
+                                            </span>
                                         </td>
                                     </tr>
                                 @endforeach

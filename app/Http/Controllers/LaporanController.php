@@ -27,7 +27,7 @@ class LaporanController extends Controller
             ->whereYear('check_time', $tahun)
             ->whereNotNull('pjlp_id');
 
-        if ($user->hasRole('koordinator')) {
+        if ($user->isKoordinator()) {
             $query->whereHas('pjlp', function ($q) use ($user) {
                 $q->forKoordinator($user);
             });
@@ -98,7 +98,7 @@ class LaporanController extends Controller
 
         $query = Absensi::with(['pjlp', 'shift'])->forMonth($tahun, $bulan);
 
-        if ($user->hasRole('koordinator')) {
+        if ($user->isKoordinator()) {
             $query->whereHas('pjlp', function ($q) use ($user) {
                 $q->forKoordinator($user);
             });
@@ -118,7 +118,7 @@ class LaporanController extends Controller
             ->whereMonth('created_at', $bulan)
             ->whereYear('created_at', $tahun);
 
-        if ($user->hasRole('koordinator')) {
+        if ($user->isKoordinator()) {
             $query->whereHas('pjlp', function ($q) use ($user) {
                 $q->forKoordinator($user);
             });
@@ -175,7 +175,7 @@ class LaporanController extends Controller
             ->whereMonth('created_at', $bulan)
             ->whereYear('created_at', $tahun);
 
-        if ($user->hasRole('koordinator')) {
+        if ($user->isKoordinator()) {
             $query->whereHas('pjlp', function ($q) use ($user) {
                 $q->forKoordinator($user);
             });
@@ -195,7 +195,7 @@ class LaporanController extends Controller
             ->whereMonth('tanggal', $bulan)
             ->whereYear('tanggal', $tahun);
 
-        if ($user->hasRole('koordinator')) {
+        if ($user->isKoordinator()) {
             $query->whereHas('pjlp', function ($q) use ($user) {
                 $q->forKoordinator($user);
             });
@@ -252,7 +252,7 @@ class LaporanController extends Controller
             ->whereMonth('tanggal', $bulan)
             ->whereYear('tanggal', $tahun);
 
-        if ($user->hasRole('koordinator')) {
+        if ($user->isKoordinator()) {
             $query->whereHas('pjlp', function ($q) use ($user) {
                 $q->forKoordinator($user);
             });

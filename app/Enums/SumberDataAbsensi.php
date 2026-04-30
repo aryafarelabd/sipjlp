@@ -13,7 +13,7 @@ enum SumberDataAbsensi: string
         return match($this) {
             self::MESIN   => 'Mesin Absensi',
             self::MANUAL  => 'Input Manual',
-            self::SELFIE  => 'Absensi Selfie',
+            self::SELFIE  => 'Data Absensi Lama',
         };
     }
 }

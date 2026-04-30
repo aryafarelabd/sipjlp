@@ -1,13 +1,13 @@
 @extends('layouts.app')
 
-@section('title', 'Rekap Absensi Selfie')
+@section('title', 'Rekap Absensi')
 
 @section('content')
 <div class="container-xl">
     <div class="page-header mb-3">
         <div class="row align-items-center">
             <div class="col">
-                <h2 class="page-title">Rekap Absensi Selfie</h2>
+                <h2 class="page-title">Rekap Absensi</h2>
                 <div class="text-muted">
                     {{ \Carbon\Carbon::create($tahun, $bulan)->translatedFormat('F Y') }}
                 </div>

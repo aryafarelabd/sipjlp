@@ -151,7 +151,7 @@
                 @endif
             </div>
             <div class="card-footer">
-                <a href="{{ route('cuti.index') }}" class="btn btn-link">
+                <a href="{{ request('from') === 'validasi' ? route('cuti.validasi') : route('cuti.index') }}" class="btn btn-link">
                     <i class="ti ti-arrow-left me-2"></i> Kembali
                 </a>
             </div>

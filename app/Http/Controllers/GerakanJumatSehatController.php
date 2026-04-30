@@ -15,7 +15,7 @@ class GerakanJumatSehatController extends Controller
         $bulan = (int) $request->get('bulan', now()->month);
         $tahun = (int) $request->get('tahun', now()->year);
 
-        if ($user->hasRole('pjlp')) {
+        if ($user->isPjlp()) {
             $pjlp    = $user->pjlp;
             $riwayat = GerakanJumatSehat::where('pjlp_id', $pjlp->id)
                 ->byBulan($bulan, $tahun)
@@ -67,6 +67,9 @@ class GerakanJumatSehatController extends Controller
     public function rekap(Request $request)
     {
         $user   = Auth::user();
+
+        abort_unless($user->hasAnyRole(['admin', 'koordinator', 'chief']), 403);
+
         $bulan  = (int) $request->get('bulan', now()->month);
         $tahun  = (int) $request->get('tahun', now()->year);
         $search = $request->get('search', '');

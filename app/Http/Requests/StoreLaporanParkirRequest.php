@@ -15,6 +15,7 @@ class StoreLaporanParkirRequest extends FormRequest
     {
         return [
             'jenis'             => 'required|in:roda_4,roda_2',
+            'shift_id'          => 'required|exists:shifts,id',
             'jumlah_kendaraan'  => 'required|integer|min:0',
             'catatan'           => 'nullable|string|max:500',
             'fotos'             => 'required|array|min:1|max:10',
@@ -26,6 +27,8 @@ class StoreLaporanParkirRequest extends FormRequest
     {
         return [
             'fotos.required'    => 'Minimal 1 foto wajib diupload.',
+            'shift_id.required' => 'Pilih shift laporan.',
+            'shift_id.exists'   => 'Shift yang dipilih tidak valid.',
             'fotos.min'         => 'Minimal 1 foto wajib diupload.',
             'fotos.max'         => 'Maksimal 10 foto per laporan.',
             'fotos.*.image'     => 'File harus berupa gambar.',

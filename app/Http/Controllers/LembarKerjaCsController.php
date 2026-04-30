@@ -18,7 +18,7 @@ class LembarKerjaCsController extends Controller
     {
         $user = Auth::user();
 
-        if ($user->hasRole('pjlp')) {
+        if ($user->isPjlp()) {
             return $this->formPjlp($request);
         }
 
@@ -147,7 +147,7 @@ class LembarKerjaCsController extends Controller
     public function show(LembarKerjaCs $lembarKerjaC)
     {
         $user = Auth::user();
-        if ($user->hasRole('pjlp') && $lembarKerjaC->pjlp_id !== $user->pjlp?->id) {
+        if ($user->isPjlp() && $lembarKerjaC->pjlp_id !== $user->pjlp?->id) {
             abort(403);
         }
 
@@ -185,7 +185,7 @@ class LembarKerjaCsController extends Controller
     public function destroy(LembarKerjaCs $lembarKerjaC)
     {
         $user = Auth::user();
-        if ($user->hasRole('pjlp') && $lembarKerjaC->pjlp_id !== $user->pjlp?->id) {
+        if ($user->isPjlp() && $lembarKerjaC->pjlp_id !== $user->pjlp?->id) {
             abort(403);
         }
         if (!$lembarKerjaC->canEdit()) {

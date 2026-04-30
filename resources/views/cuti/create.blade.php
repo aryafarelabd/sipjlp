@@ -126,7 +126,7 @@
                 <div class="card-footer">
                     <div class="d-flex">
                         <a href="{{ route('cuti.index') }}" class="btn btn-link">Batal</a>
-                        <button type="submit" class="btn btn-primary ms-auto">
+                        <button type="submit" class="btn btn-primary ms-auto" id="submitCuti" disabled>
                             <i class="ti ti-send me-2"></i> Kirim Pengajuan
                         </button>
                     </div>
@@ -145,11 +145,7 @@
                     <strong>Penting:</strong>
                 </div>
                 <ul class="mb-0">
-                    @if(!empty($danruList) && $danruList->isNotEmpty())
-                    <li>Pengajuan akan dikirim ke <strong>Danru → Chief → Koordinator</strong> secara berjenjang</li>
-                    @else
-                    <li>Pengajuan cuti akan dikirim ke Koordinator untuk disetujui</li>
-                    @endif
+                    <li>{{ $approvalInfo }}</li>
                     <li>Tanggal permohonan diisi otomatis oleh sistem</li>
                     <li>Data <strong>tidak dapat diubah</strong> setelah dikirim</li>
                     <li>Pastikan nomor telepon yang diisi aktif dan dapat dihubungi</li>
@@ -165,17 +161,20 @@ document.addEventListener('DOMContentLoaded', function() {
     const tglMulai = document.querySelector('input[name="tgl_mulai"]');
     const tglSelesai = document.querySelector('input[name="tgl_selesai"]');
     const jumlahHari = document.getElementById('jumlahHari');
+    const submitCuti = document.getElementById('submitCuti');
 
     function hitungHari() {
+        let totalHari = 0;
         if (tglMulai.value && tglSelesai.value) {
             const start = new Date(tglMulai.value);
             const end = new Date(tglSelesai.value);
             const diffTime = end - start;
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-            jumlahHari.textContent = diffDays > 0 ? diffDays : 0;
-        } else {
-            jumlahHari.textContent = 0;
+            totalHari = diffDays > 0 ? diffDays : 0;
         }
+
+        jumlahHari.textContent = totalHari;
+        submitCuti.disabled = totalHari < 1;
     }
 
     tglMulai.addEventListener('change', function() {

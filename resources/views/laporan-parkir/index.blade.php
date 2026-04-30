@@ -31,25 +31,6 @@
         </div>
         @endif
 
-        @if(!$hasShift)
-        <div class="card">
-            <div class="card-body text-center py-5">
-                <div class="mb-3 text-muted">
-                    <i class="ti ti-calendar-off" style="font-size:3rem;"></i>
-                </div>
-                <h3>Tidak Ada Jadwal Hari Ini</h3>
-                <p class="text-muted">Anda tidak memiliki jadwal shift yang aktif untuk hari ini.<br>Hubungi koordinator jika ada kesalahan jadwal.</p>
-            </div>
-        </div>
-        @else
-        {{-- Info shift --}}
-        <div class="alert alert-info mb-3">
-            <i class="ti ti-info-circle me-2"></i>
-            Shift aktif: <strong>{{ $shift->nama }}</strong>
-            ({{ \Carbon\Carbon::parse($shift->jam_mulai)->format('H:i') }} – {{ \Carbon\Carbon::parse($shift->jam_selesai)->format('H:i') }})
-            &mdash; {{ now()->translatedFormat('d F Y') }}
-        </div>
-
         {{-- Tabs --}}
         <ul class="nav nav-tabs mb-3" id="parkirTab">
             <li class="nav-item">
@@ -85,6 +66,21 @@
                                 <form action="{{ route('laporan-parkir.store') }}" method="POST" enctype="multipart/form-data">
                                     @csrf
                                     <input type="hidden" name="jenis" value="roda_4">
+
+                                    <div class="mb-3">
+                                        <label class="form-label">Shift <span class="text-danger">*</span></label>
+                                        <select name="shift_id" class="form-select @error('shift_id') is-invalid @enderror" required>
+                                            <option value="">Pilih shift</option>
+                                            @foreach($shifts as $shift)
+                                            <option value="{{ $shift->id }}" @selected(old('jenis') === 'roda_4' && old('shift_id') == $shift->id)>
+                                                {{ $shift->nama }} ({{ \Carbon\Carbon::parse($shift->jam_mulai)->format('H:i') }} - {{ \Carbon\Carbon::parse($shift->jam_selesai)->format('H:i') }})
+                                            </option>
+                                            @endforeach
+                                        </select>
+                                        @error('shift_id')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
 
                                     <div class="mb-3">
                                         <label class="form-label">Jumlah Kendaraan Roda 4 <span class="text-danger">*</span></label>
@@ -189,6 +185,21 @@
                                     <input type="hidden" name="jenis" value="roda_2">
 
                                     <div class="mb-3">
+                                        <label class="form-label">Shift <span class="text-danger">*</span></label>
+                                        <select name="shift_id" class="form-select @error('shift_id') is-invalid @enderror" required>
+                                            <option value="">Pilih shift</option>
+                                            @foreach($shifts as $shift)
+                                            <option value="{{ $shift->id }}" @selected(old('jenis') === 'roda_2' && old('shift_id') == $shift->id)>
+                                                {{ $shift->nama }} ({{ \Carbon\Carbon::parse($shift->jam_mulai)->format('H:i') }} - {{ \Carbon\Carbon::parse($shift->jam_selesai)->format('H:i') }})
+                                            </option>
+                                            @endforeach
+                                        </select>
+                                        @error('shift_id')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+
+                                    <div class="mb-3">
                                         <label class="form-label">Jumlah Kendaraan Roda 2 <span class="text-danger">*</span></label>
                                         <input type="number" name="jumlah_kendaraan" class="form-control"
                                                value="{{ old('jumlah_kendaraan') }}" min="0" placeholder="0" required>
@@ -267,7 +278,6 @@
             </div>
 
         </div>
-        @endif
 
     </div>
 </div>

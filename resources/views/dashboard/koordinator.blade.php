@@ -42,11 +42,7 @@
                         </div>
                     </div>
                     <div class="col-auto d-flex gap-2">
-                        @if($unit && $unit->value === 'security')
-                            <a href="{{ route('jadwal-security.index') }}" class="btn btn-light">
-                                <i class="ti ti-calendar me-1"></i> Jadwal Security
-                            </a>
-                        @else
+                        @if(auth()->user()->can('jadwal-cs.manage'))
                             <a href="{{ route('jadwal-shift-cs.index') }}" class="btn btn-light">
                                 <i class="ti ti-calendar me-1"></i> Jadwal Shift CS
                             </a>
@@ -88,7 +84,7 @@
                         <div class="row align-items-center">
                             <div class="col-auto">
                                 <span class="bg-green text-white avatar">
-                                    <i class="ti ti-camera-selfie"></i>
+                                    <i class="ti ti-fingerprint"></i>
                                 </span>
                             </div>
                             <div class="col">

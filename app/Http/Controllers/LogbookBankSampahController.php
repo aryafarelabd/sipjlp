@@ -15,7 +15,7 @@ class LogbookBankSampahController extends Controller
     {
         $user = Auth::user();
 
-        if ($user->hasRole('pjlp')) {
+        if ($user->isPjlp()) {
             return $this->pjlpIndex($request, $user);
         }
 

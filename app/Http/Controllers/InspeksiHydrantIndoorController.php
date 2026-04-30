@@ -19,7 +19,7 @@ class InspeksiHydrantIndoorController extends Controller
         $tahun = (int) $request->get('tahun', now()->year);
 
         // PJLP → form input
-        if ($user->hasRole('pjlp')) {
+        if ($user->isPjlp()) {
             $pjlp   = $user->pjlp;
             $shifts  = Shift::orderBy('jam_mulai')->get();
             $riwayat = InspeksiHydrantIndoor::with('shift')

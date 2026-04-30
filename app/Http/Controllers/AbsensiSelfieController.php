@@ -3,16 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Enums\SumberDataAbsensi;
-use App\Enums\StatusAbsensi;
 use App\Exports\RekapAbsensiExport;
-use App\Http\Requests\AbsenMasukRequest;
-use App\Http\Requests\AbsenPulangRequest;
 use App\Http\Requests\KoreksiAbsensiRequest;
 use App\Models\Absensi;
 use App\Models\AuditLog;
 use App\Models\Pjlp;
-use App\Models\User;
-use App\Notifications\AbsensiAlertNotification;
 use App\Services\AbsensiSelfieService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -23,202 +18,46 @@ class AbsensiSelfieController extends Controller
     public function __construct(protected AbsensiSelfieService $service) {}
 
     /**
-     * Halaman absen untuk PJLP (mobile).
+     * Halaman absensi bulan ini milik pegawai yang login.
      */
     public function showAbsenPage()
     {
-        $user = auth()->user();
-        $pjlp = $user->pjlp;
+        $pjlp = auth()->user()->pjlp;
 
         if (!$pjlp) {
             return redirect()->route('dashboard')
                 ->with('error', 'Profil PJLP tidak ditemukan. Hubungi administrator.');
         }
 
-        $today        = Carbon::today();
-        $now          = Carbon::now();
-        $jadwalInfo   = $this->service->getJadwalForPjlp($pjlp, $today);
-        $absensiHariIni = Absensi::where('pjlp_id', $pjlp->id)
-            ->whereDate('tanggal', $today)
-            ->with('shift')
-            ->first();
+        $bulan       = now()->month;
+        $tahun       = now()->year;
+        $bulanCarbon = Carbon::create($tahun, $bulan, 1);
+        $startOfMonth = $bulanCarbon->copy()->startOfMonth();
+        $endOfMonth   = $bulanCarbon->copy()->endOfMonth();
 
-        $shift        = $jadwalInfo['shift'];
-        $hasJadwal    = $jadwalInfo['is_kerja'];
-
-        $masukStatus  = null;
-        $pulangStatus = null;
-        $windowMasuk  = null;
-        $windowPulang = null;
-
-        if ($hasJadwal && $shift) {
-            $windowMasuk  = $this->service->getWindowMasuk($shift, $today);
-            $windowPulang = $this->service->getWindowPulang($shift, $today);
-            $masukStatus  = $this->service->checkInAllowed($absensiHariIni, $shift, $now, $today);
-            $pulangStatus = $this->service->checkOutAllowed($absensiHariIni, $shift, $now, $today);
-        }
-
-        return view('absensi.selfie.absen', compact(
-            'pjlp',
-            'shift',
-            'hasJadwal',
-            'absensiHariIni',
-            'masukStatus',
-            'pulangStatus',
-            'windowMasuk',
-            'windowPulang',
-            'now',
-        ));
-    }
-
-    /**
-     * Proses absen masuk.
-     */
-    public function absenMasuk(AbsenMasukRequest $request)
-    {
-        $pjlp = auth()->user()->pjlp;
-
-        if (!$pjlp) {
-            return redirect()->route('dashboard')->with('error', 'Profil PJLP tidak ditemukan.');
-        }
-
-        $today      = Carbon::today();
-        $now        = Carbon::now();
-        $jadwalInfo = $this->service->getJadwalForPjlp($pjlp, $today);
-
-        if (!$jadwalInfo['is_kerja'] || !$jadwalInfo['shift']) {
-            return redirect()->route('absen.index')->with('error', 'Tidak ada jadwal kerja hari ini.');
-        }
-
-        $shift  = $jadwalInfo['shift'];
-        $check  = $this->service->checkInAllowed(
-            Absensi::where('pjlp_id', $pjlp->id)->whereDate('tanggal', $today)->first(),
-            $shift, $now, $today
-        );
-
-        if (!$check['allowed']) {
-            return redirect()->route('absen.index')->with('error', $check['reason']);
-        }
-
-        $fotoPath = $this->service->storeSelfiePhoto($request->file('foto'), 'masuk', $pjlp);
-        $absensi  = $this->service->processAbsenMasuk(
-            $pjlp, $shift, $now, $fotoPath,
-            $request->filled('latitude')  ? (float) $request->latitude  : null,
-            $request->filled('longitude') ? (float) $request->longitude : null,
-        );
-
-        AuditLog::log('Absen masuk selfie', $absensi, null, $absensi->toArray());
-
-        // Notifikasi ke koordinator jika terlambat
-        if ($absensi->status === StatusAbsensi::TERLAMBAT) {
-            $koordinators = User::role('koordinator')
-                ->where('unit', $pjlp->unit)
-                ->whereNotNull('telegram_chat_id')
-                ->get();
-            foreach ($koordinators as $koordinator) {
-                $koordinator->notify(new AbsensiAlertNotification($pjlp, 'terlambat', $absensi));
-            }
-        }
-
-        return redirect()->route('absen.index')
-            ->with('success', 'Absen masuk berhasil dicatat pukul ' . $now->format('H:i') . '.');
-    }
-
-    /**
-     * Proses absen pulang.
-     */
-    public function absenPulang(AbsenPulangRequest $request)
-    {
-        $pjlp = auth()->user()->pjlp;
-
-        if (!$pjlp) {
-            return redirect()->route('dashboard')->with('error', 'Profil PJLP tidak ditemukan.');
-        }
-
-        $today      = Carbon::today();
-        $now        = Carbon::now();
-        $jadwalInfo = $this->service->getJadwalForPjlp($pjlp, $today);
-
-        if (!$jadwalInfo['shift']) {
-            return redirect()->route('absen.index')->with('error', 'Tidak ada jadwal kerja hari ini.');
-        }
-
-        $shift    = $jadwalInfo['shift'];
-        $absensi  = Absensi::where('pjlp_id', $pjlp->id)->whereDate('tanggal', $today)->first();
-        $check    = $this->service->checkOutAllowed($absensi, $shift, $now, $today);
-
-        if (!$check['allowed']) {
-            return redirect()->route('absen.index')->with('error', $check['reason']);
-        }
-
-        $fotoPath = $this->service->storeSelfiePhoto($request->file('foto'), 'pulang', $pjlp);
-        $absensi  = $this->service->processAbsenPulang(
-            $absensi, $now, $fotoPath,
-            $request->filled('latitude')  ? (float) $request->latitude  : null,
-            $request->filled('longitude') ? (float) $request->longitude : null,
-        );
-
-        AuditLog::log('Absen pulang selfie', $absensi, null, $absensi->toArray());
-
-        return redirect()->route('absen.index')
-            ->with('success', 'Absen pulang berhasil dicatat pukul ' . $now->format('H:i') . '.');
-    }
-
-    /**
-     * Jadwal Saya — kalender shift bulan ini untuk PJLP yang login.
-     */
-    public function jadwalSaya(Request $request)
-    {
-        $pjlp = auth()->user()->pjlp;
-
-        if (!$pjlp) {
-            return redirect()->route('dashboard')->with('error', 'Profil PJLP tidak ditemukan.');
-        }
-
-        $bulan = (int) $request->input('bulan', now()->month);
-        $tahun = (int) $request->input('tahun', now()->year);
-
-        $startOfMonth = Carbon::create($tahun, $bulan, 1)->startOfMonth();
-        $endOfMonth   = $startOfMonth->copy()->endOfMonth();
-
-        // Ambil jadwal harian bulan ini
-        $jadwalMap = $this->service->getJadwalHarianMap($pjlp, $startOfMonth, $endOfMonth);
-
-        // Ambil absensi bulan ini
-        $absensiMap = \App\Models\Absensi::where('pjlp_id', $pjlp->id)
+        $absensiMap = Absensi::where('pjlp_id', $pjlp->id)
             ->whereYear('tanggal', $tahun)
             ->whereMonth('tanggal', $bulan)
+            ->with('shift')
             ->get()
             ->keyBy(fn ($a) => Carbon::parse($a->tanggal)->format('Y-m-d'));
 
-        // Susun data per hari
+        $jadwalMap = $this->service->getJadwalHarianMap($pjlp, $startOfMonth, $endOfMonth);
+
         $hariList = [];
-        $today    = Carbon::today();
         for ($d = $startOfMonth->copy(); $d->lte($endOfMonth); $d->addDay()) {
             $key     = $d->format('Y-m-d');
             $jadwal  = $jadwalMap[$key] ?? null;
-            $absensi = $absensiMap[$key] ?? null;
-            $shift   = $jadwal['shift'] ?? null;
-            $isKerja = $jadwal['is_kerja'] ?? false;
-
-            $windowMasuk  = ($isKerja && $shift) ? $this->service->getWindowMasuk($shift, $d->copy()) : null;
-            $windowPulang = ($isKerja && $shift) ? $this->service->getWindowPulang($shift, $d->copy()) : null;
 
             $hariList[] = [
-                'tanggal'       => $d->copy(),
-                'is_kerja'      => $isKerja,
-                'shift'         => $shift,
-                'absensi'       => $absensi,
-                'window_masuk'  => $windowMasuk,
-                'window_pulang' => $windowPulang,
-                'is_today'      => $d->isSameDay($today),
-                'is_past'       => $d->lt($today),
+                'tanggal' => $d->copy(),
+                'shift'   => $jadwal['shift'] ?? null,
+                'is_kerja'=> $jadwal['is_kerja'] ?? false,
+                'absensi' => $absensiMap[$key] ?? null,
             ];
         }
 
-        return view('absensi.selfie.jadwal-saya', compact(
-            'pjlp', 'hariList', 'bulan', 'tahun'
-        ));
+        return view('absensi.selfie.absen', compact('pjlp', 'hariList', 'bulan', 'tahun'));
     }
 
     /**
@@ -228,10 +67,7 @@ class AbsensiSelfieController extends Controller
     {
         $user = auth()->user();
 
-        abort_unless(
-            $user->canAny(['absensi.view-unit', 'absensi.view-all']),
-            403
-        );
+        abort_unless($this->canViewRekapAbsensi($user), 403);
 
         $bulan = (int) $request->input('bulan', now()->month);
         $tahun       = (int) $request->input('tahun', now()->year);
@@ -329,6 +165,9 @@ class AbsensiSelfieController extends Controller
     public function simpanKoreksi(KoreksiAbsensiRequest $request)
     {
         $user    = auth()->user();
+
+        abort_unless($user->isAdmin(), 403);
+
         $pjlp    = Pjlp::findOrFail($request->pjlp_id);
         $tanggal = Carbon::parse($request->tanggal);
 
@@ -375,10 +214,7 @@ class AbsensiSelfieController extends Controller
      */
     public function exportRekap(Request $request)
     {
-        abort_unless(
-            auth()->user()->canAny(['absensi.view-unit', 'absensi.view-all']),
-            403
-        );
+        abort_unless($this->canViewRekapAbsensi(auth()->user()), 403);
 
         $bulan = (int) $request->input('bulan', now()->month);
         $tahun = (int) $request->input('tahun', now()->year);
@@ -441,5 +277,14 @@ class AbsensiSelfieController extends Controller
         }
 
         return view('absensi.selfie.rekap_detail', compact('pjlp', 'hariList', 'bulan', 'tahun'));
+    }
+
+    private function canViewRekapAbsensi($user): bool
+    {
+        if ($user->hasAnyRole(['pjlp', 'danru'])) {
+            return false;
+        }
+
+        return $user->canAny(['absensi.view-unit', 'absensi.view-all']);
     }
 }

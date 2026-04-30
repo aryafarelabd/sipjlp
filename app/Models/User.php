@@ -46,12 +46,12 @@ class User extends Authenticatable
 
     public function isPjlp(): bool
     {
-        return $this->hasRole('pjlp');
+        return $this->hasRole(['pjlp', 'danru']);
     }
 
     public function isKoordinator(): bool
     {
-        return $this->hasRole('koordinator');
+        return $this->hasRole(['koordinator', 'chief']);
     }
 
     public function isAdmin(): bool

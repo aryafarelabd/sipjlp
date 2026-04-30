@@ -53,6 +53,7 @@ class UserController extends Controller
 
         $user = User::create([
             'name'      => $validated['name'],
+            'username'  => $validated['username'] ?? null,
             'nip'       => $validated['nip'] ?? null,
             'email'     => $validated['email'],
             'password'  => Hash::make($validated['password']),
@@ -94,6 +95,7 @@ class UserController extends Controller
 
         $user->update([
             'name'      => $validated['name'],
+            'username'  => $validated['username'] ?? null,
             'nip'       => $validated['nip'] ?? null,
             'email'     => $validated['email'],
             'unit'      => $validated['unit'] ?? null,

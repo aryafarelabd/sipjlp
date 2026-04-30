@@ -16,7 +16,7 @@ class PengawasanProyekController extends Controller
         $bulan = (int) $request->get('bulan', now()->month);
         $tahun = (int) $request->get('tahun', now()->year);
 
-        if ($user->hasRole('pjlp')) {
+        if ($user->isPjlp()) {
             $pjlp    = $user->pjlp;
             $shifts  = Shift::orderBy('jam_mulai')->get();
             $riwayat = PengawasanProyek::with('shift')

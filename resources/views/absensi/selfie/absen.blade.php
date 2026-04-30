@@ -1,27 +1,25 @@
 @extends('layouts.app')
 
-@section('title', 'Absensi Harian')
+@section('title', 'Rekap Absen Saya')
 
 @push('styles')
 <style>
-    .absen-card {
-        max-width: 480px;
-        margin: 0 auto;
-    }
-    #video-preview, #canvas-preview {
-        width: 100%;
-        border-radius: 8px;
-        background: #000;
-        max-height: 320px;
+    .absensi-thumb {
+        width: 44px;
+        height: 44px;
         object-fit: cover;
+        border-radius: 6px;
+        cursor: pointer;
+        border: 2px solid transparent;
+        transition: border-color .15s;
     }
-    #canvas-preview { display: none; }
-    .gps-status { font-size: 0.85rem; }
-    .window-info { font-size: 0.875rem; }
-    .status-badge-masuk, .status-badge-pulang {
-        font-size: 1rem;
-        padding: 0.4rem 1rem;
-    }
+    .absensi-thumb:hover { border-color: var(--tblr-primary); }
+    .modal-img-preview { max-width: 100%; border-radius: 8px; }
+    .geo-link { font-size: 0.78rem; white-space: nowrap; }
+    .absen-time { font-size: 0.95rem; font-weight: 600; line-height: 1.2; }
+    .absen-meta { font-size: 0.75rem; color: var(--tblr-muted); }
+    tr.is-today { background-color: rgba(var(--tblr-primary-rgb), 0.05); }
+    tr.is-libur td { color: var(--tblr-muted); }
 </style>
 @endpush
 
@@ -30,191 +28,284 @@
     <div class="page-header mb-3">
         <div class="row align-items-center">
             <div class="col">
-                <h2 class="page-title">Absensi Harian</h2>
-                <div class="text-muted">{{ $now->translatedFormat('l, d F Y') }}</div>
+                <h2 class="page-title mb-0">Rekap Absen Saya</h2>
             </div>
         </div>
     </div>
 
-    <div class="absen-card">
+    <div class="mb-3">
+        <h2 class="h2 mb-1">{{ $pjlp->nama }}</h2>
+        <div class="text-muted small">
+            {{ $pjlp->nip ?? $pjlp->badge_number ?? '-' }} &bull;
+            {{ $pjlp->jabatan ?: ucfirst($pjlp->unit?->value ?? '-') }} &bull;
+            {{ \Carbon\Carbon::create($tahun, $bulan)->translatedFormat('F Y') }}
+        </div>
+    </div>
 
-        {{-- Alert flash --}}
-        @if(session('success'))
-            <div class="alert alert-success alert-dismissible mb-3">
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                {{ session('success') }}
-            </div>
-        @endif
-        @if(session('error'))
-            <div class="alert alert-danger alert-dismissible mb-3">
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                {{ session('error') }}
-            </div>
-        @endif
+    @php
+        $totalHariKerja   = collect($hariList)->where('is_kerja', true)->count();
+        $totalAlpha       = collect($hariList)->filter(fn($h) => $h['absensi']?->status?->value === 'alpha')->count();
+        $totalIzin        = collect($hariList)->filter(fn($h) => in_array($h['absensi']?->status?->value, ['izin', 'cuti', 'sakit']))->count();
+        $totalTelatMenit  = collect($hariList)->sum(fn($h) => $h['absensi']?->menit_terlambat ?? 0);
 
-        {{-- Info PJLP --}}
-        <div class="card mb-3">
-            <div class="card-body py-2">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="avatar avatar-md">
-                        @if($pjlp->foto)
-                            <img src="{{ asset('storage/pjlp/' . $pjlp->foto) }}" alt="{{ $pjlp->nama }}">
-                        @else
-                            <span class="avatar-initials bg-blue text-white">{{ strtoupper(substr($pjlp->nama, 0, 1)) }}</span>
-                        @endif
-                    </div>
-                    <div>
-                        <div class="fw-bold">{{ $pjlp->nama }}</div>
-                        <div class="text-muted small">{{ $pjlp->jabatan }} &bull; {{ ucfirst($pjlp->unit->value) }}</div>
-                    </div>
-                </div>
+        $totalPulangCepat = 0;
+        foreach ($hariList as $h) {
+            $abs = $h['absensi'];
+            $sft = $h['shift'];
+            if (!$abs || !$sft) continue;
+
+            $tgl = $h['tanggal'];
+            $shiftMulai = \Carbon\Carbon::parse($tgl->format('Y-m-d') . ' ' . \Carbon\Carbon::parse($sft->jam_mulai)->format('H:i:s'));
+            $shiftSelesai = \Carbon\Carbon::parse($tgl->format('Y-m-d') . ' ' . \Carbon\Carbon::parse($sft->jam_selesai)->format('H:i:s'));
+            if ($shiftSelesai->lte($shiftMulai)) $shiftSelesai->addDay();
+
+            if ($abs->jam_masuk && !$abs->jam_pulang && !$tgl->isFuture()) {
+                $totalPulangCepat += 225;
+            } elseif ($abs->jam_masuk && $abs->jam_pulang) {
+                $jamPulang = \Carbon\Carbon::parse($abs->jam_pulang);
+                $selisih = (int) $jamPulang->diffInMinutes($shiftSelesai, false);
+                if ($selisih > 0) $totalPulangCepat += $selisih;
+            }
+        }
+    @endphp
+
+    <div class="row g-2 mb-3">
+        <div class="col-auto">
+            <div class="card p-2 px-3 text-center">
+                <div class="text-muted small">Hari Kerja</div>
+                <div class="fw-bold fs-4">{{ $totalHariKerja }}</div>
             </div>
         </div>
-
-        {{-- STATE A: Tidak ada jadwal --}}
-        @if(!$hasJadwal)
-            <div class="card border-warning">
-                <div class="card-body text-center py-4">
-                    <div class="mb-2"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-lg text-warning" width="48" height="48" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 9v4"/><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z"/><path d="M12 16h.01"/></svg></div>
-                    <h4 class="text-warning mb-1">Tidak Ada Jadwal Hari Ini</h4>
-                    <p class="text-muted mb-0">Hubungi koordinator untuk informasi jadwal Anda.</p>
-                </div>
+        <div class="col-auto">
+            <div class="card p-2 px-3 text-center border-danger">
+                <div class="text-muted small">Alpha</div>
+                <div class="fw-bold fs-4 text-danger">{{ $totalAlpha }}</div>
             </div>
-
-        @elseif($shift)
-            {{-- Info Shift --}}
-            <div class="card mb-3 bg-blue-lt">
-                <div class="card-body py-2">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <div class="fw-bold">{{ $shift->nama }}</div>
-                            <div class="text-muted small">
-                                Masuk: {{ \Carbon\Carbon::parse($shift->jam_mulai)->format('H:i') }} &bull;
-                                Pulang: {{ \Carbon\Carbon::parse($shift->jam_selesai)->format('H:i') }}
-                            </div>
-                        </div>
-                        <span class="badge bg-blue">Jadwal Hari Ini</span>
-                    </div>
-                </div>
+        </div>
+        <div class="col-auto">
+            <div class="card p-2 px-3 text-center border-info">
+                <div class="text-muted small">Izin/Cuti</div>
+                <div class="fw-bold fs-4 text-info">{{ $totalIzin }}</div>
             </div>
+        </div>
+        <div class="col-auto">
+            <div class="card p-2 px-3 text-center border-warning">
+                <div class="text-muted small">Telat</div>
+                <div class="fw-bold fs-4 text-warning">{{ $totalTelatMenit }} <small class="fs-6 fw-normal">mnt</small></div>
+            </div>
+        </div>
+        <div class="col-auto">
+            <div class="card p-2 px-3 text-center border-orange">
+                <div class="text-muted small">Pulang Cepat</div>
+                <div class="fw-bold fs-4 text-orange">{{ $totalPulangCepat }} <small class="fs-6 fw-normal">mnt</small></div>
+            </div>
+        </div>
+    </div>
 
-            {{-- Status absensi hari ini --}}
-            @if($absensiHariIni)
-                <div class="card mb-3">
-                    <div class="card-body">
-                        <div class="row g-2 text-center">
-                            <div class="col-6">
-                                <div class="text-muted small">Masuk</div>
-                                @if($absensiHariIni->jam_masuk)
-                                    <div class="fw-bold text-success fs-4">{{ \Carbon\Carbon::parse($absensiHariIni->jam_masuk)->format('H:i') }}</div>
-                                    <span class="badge {{ $absensiHariIni->status->value === 'terlambat' ? 'bg-warning' : 'bg-success' }}">
-                                        {{ $absensiHariIni->status->value === 'terlambat' ? 'Terlambat' : 'Tepat Waktu' }}
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-vcenter table-hover card-table">
+                <thead>
+                    <tr>
+                        <th style="width:120px">Tanggal</th>
+                        <th>Shift</th>
+                        <th>Masuk</th>
+                        <th>Pulang</th>
+                        <th>Telat</th>
+                        <th>Pulang Cepat</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($hariList as $hari)
+                        @php
+                            $tanggal = $hari['tanggal'];
+                            $shift = $hari['shift'];
+                            $isKerja = $hari['is_kerja'];
+                            $absensi = $hari['absensi'];
+                            $isToday = $tanggal->isToday();
+                            $isFuture = $tanggal->isFuture();
+
+                            $menitTelat = null;
+                            if ($absensi && $absensi->status?->value === 'terlambat') {
+                                $menitTelat = $absensi->menit_terlambat ?? 0;
+                            }
+
+                            $menitPulangCepat = null;
+                            $pulangCepatMaks = false;
+                            if ($shift && $absensi) {
+                                $shiftMulai = \Carbon\Carbon::parse($tanggal->format('Y-m-d') . ' ' . \Carbon\Carbon::parse($shift->jam_mulai)->format('H:i:s'));
+                                $shiftSelesai = \Carbon\Carbon::parse($tanggal->format('Y-m-d') . ' ' . \Carbon\Carbon::parse($shift->jam_selesai)->format('H:i:s'));
+                                if ($shiftSelesai->lte($shiftMulai)) $shiftSelesai->addDay();
+
+                                if ($absensi->jam_masuk && !$absensi->jam_pulang && !$isFuture) {
+                                    $menitPulangCepat = 225;
+                                    $pulangCepatMaks = true;
+                                } elseif ($absensi->jam_masuk && $absensi->jam_pulang) {
+                                    $jamPulang = \Carbon\Carbon::parse($absensi->jam_pulang);
+                                    $selisih = (int) $jamPulang->diffInMinutes($shiftSelesai, false);
+                                    if ($selisih > 0) $menitPulangCepat = $selisih;
+                                }
+                            }
+                        @endphp
+                        <tr class="{{ $isToday ? 'is-today' : '' }} {{ !$isKerja && !$absensi ? 'is-libur' : '' }}">
+                            <td class="text-nowrap">
+                                <div class="{{ $isToday ? 'fw-bold text-primary' : '' }}">
+                                    {{ $tanggal->translatedFormat('d M') }}
+                                </div>
+                                <div class="text-muted small">{{ $tanggal->translatedFormat('l') }}</div>
+                            </td>
+                            <td>
+                                @if($shift)
+                                    <div class="fw-medium">{{ $shift->nama }}</div>
+                                    <div class="text-muted small">
+                                        {{ \Carbon\Carbon::parse($shift->jam_mulai)->format('H:i') }}-{{ \Carbon\Carbon::parse($shift->jam_selesai)->format('H:i') }}
+                                    </div>
+                                @else
+                                    <span class="text-muted">-</span>
+                                @endif
+                            </td>
+                            <td>
+                                @if($absensi?->jam_masuk)
+                                    <div class="d-flex align-items-start gap-2">
+                                        @if($absensi->foto_masuk_url)
+                                            <img src="{{ $absensi->foto_masuk_url }}"
+                                                 class="absensi-thumb"
+                                                 data-bs-toggle="modal"
+                                                 data-bs-target="#modalFoto"
+                                                 data-img="{{ $absensi->foto_masuk_url }}"
+                                                 data-label="Foto Masuk - {{ $tanggal->translatedFormat('d M Y') }}"
+                                                 title="Lihat foto masuk">
+                                        @else
+                                            <div class="absensi-thumb bg-gray-100 d-flex align-items-center justify-content-center text-muted">
+                                                <i class="ti ti-photo-off"></i>
+                                            </div>
+                                        @endif
+                                        <div>
+                                            <div class="absen-time text-success">
+                                                {{ \Carbon\Carbon::parse($absensi->jam_masuk)->format('H:i') }}
+                                            </div>
+                                            @if($absensi->latitude_masuk && $absensi->longitude_masuk)
+                                                <a href="https://www.google.com/maps?q={{ $absensi->latitude_masuk }},{{ $absensi->longitude_masuk }}"
+                                                   target="_blank" class="geo-link text-azure">
+                                                    <i class="ti ti-map-pin me-1"></i>Lokasi
+                                                </a>
+                                            @else
+                                                <span class="absen-meta">Lokasi N/A</span>
+                                            @endif
+                                        </div>
+                                    </div>
+                                @else
+                                    <span class="text-muted">-</span>
+                                @endif
+                            </td>
+                            <td>
+                                @if($absensi?->jam_pulang)
+                                    <div class="d-flex align-items-start gap-2">
+                                        @if($absensi->foto_pulang_url)
+                                            <img src="{{ $absensi->foto_pulang_url }}"
+                                                 class="absensi-thumb"
+                                                 data-bs-toggle="modal"
+                                                 data-bs-target="#modalFoto"
+                                                 data-img="{{ $absensi->foto_pulang_url }}"
+                                                 data-label="Foto Pulang - {{ $tanggal->translatedFormat('d M Y') }}"
+                                                 title="Lihat foto pulang">
+                                        @else
+                                            <div class="absensi-thumb bg-gray-100 d-flex align-items-center justify-content-center text-muted">
+                                                <i class="ti ti-photo-off"></i>
+                                            </div>
+                                        @endif
+                                        <div>
+                                            <div class="absen-time text-blue">
+                                                {{ \Carbon\Carbon::parse($absensi->jam_pulang)->format('H:i') }}
+                                            </div>
+                                            @if($absensi->latitude_pulang && $absensi->longitude_pulang)
+                                                <a href="https://www.google.com/maps?q={{ $absensi->latitude_pulang }},{{ $absensi->longitude_pulang }}"
+                                                   target="_blank" class="geo-link text-azure">
+                                                    <i class="ti ti-map-pin me-1"></i>Lokasi
+                                                </a>
+                                            @else
+                                                <span class="absen-meta">Lokasi N/A</span>
+                                            @endif
+                                        </div>
+                                    </div>
+                                @else
+                                    <span class="text-muted">-</span>
+                                @endif
+                            </td>
+                            <td>
+                                @if($menitTelat !== null && $menitTelat > 0)
+                                    <span class="badge bg-warning text-dark" style="font-size:0.8rem">
+                                        {{ $menitTelat }} mnt
                                     </span>
                                 @else
-                                    <div class="text-muted">-</div>
+                                    <span class="text-muted">-</span>
                                 @endif
-                            </div>
-                            <div class="col-6">
-                                <div class="text-muted small">Pulang</div>
-                                @if($absensiHariIni->jam_pulang)
-                                    <div class="fw-bold text-success fs-4">{{ \Carbon\Carbon::parse($absensiHariIni->jam_pulang)->format('H:i') }}</div>
-                                    <span class="badge bg-success">Tercatat</span>
+                            </td>
+                            <td>
+                                @if($menitPulangCepat !== null)
+                                    @if($pulangCepatMaks)
+                                        <span class="badge bg-danger" style="font-size:0.8rem" title="Belum absen pulang">
+                                            225 mnt*
+                                        </span>
+                                    @else
+                                        <span class="badge bg-orange" style="font-size:0.8rem">
+                                            {{ $menitPulangCepat }} mnt
+                                        </span>
+                                    @endif
                                 @else
-                                    <div class="text-muted">-</div>
+                                    <span class="text-muted">-</span>
                                 @endif
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            @endif
-
-            {{-- STATE F: Sudah absen masuk dan pulang --}}
-            @if($absensiHariIni && $absensiHariIni->jam_masuk && $absensiHariIni->jam_pulang)
-                <div class="card border-success">
-                    <div class="card-body text-center py-4">
-                        <div class="mb-2 text-success"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-lg" width="48" height="48" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10"/></svg></div>
-                        <h4 class="text-success mb-1">Absensi Hari Ini Selesai</h4>
-                        <p class="text-muted mb-0">Masuk pukul {{ \Carbon\Carbon::parse($absensiHariIni->jam_masuk)->format('H:i') }} &bull; Pulang pukul {{ \Carbon\Carbon::parse($absensiHariIni->jam_pulang)->format('H:i') }}</p>
-                    </div>
-                </div>
-
-            @else
-                {{-- FORM ABSEN MASUK (State B / C) --}}
-                @if(!$absensiHariIni || !$absensiHariIni->jam_masuk)
-                    @if(!$masukStatus['allowed'])
-                        <div class="card mb-3 {{ str_contains($masukStatus['reason'], 'ditutup') || str_contains($masukStatus['reason'], 'ALPHA') ? 'border-danger' : 'border-azure' }}">
-                            <div class="card-body text-center py-3">
-                                <p class="mb-0 {{ str_contains($masukStatus['reason'], 'ditutup') || str_contains($masukStatus['reason'], 'ALPHA') ? 'text-danger' : 'text-azure' }}">
-                                    {{ $masukStatus['reason'] }}
-                                </p>
-                                @if(isset($masukStatus['window']))
-                                    <div class="text-muted small mt-1 window-info">
-                                        Window absen masuk: {{ $masukStatus['window']['open']->format('H:i') }} – {{ $masukStatus['window']['close']->format('H:i') }}
-                                    </div>
+                            </td>
+                            <td>
+                                @if($isFuture && !$absensi)
+                                    <span class="text-muted small">-</span>
+                                @elseif(!$isKerja && !$absensi)
+                                    <span class="text-muted small">Libur</span>
+                                @elseif($absensi)
+                                    @php
+                                        $statusColor = match($absensi->status?->value) {
+                                            'hadir' => 'success',
+                                            'terlambat' => 'warning',
+                                            'alpha' => 'danger',
+                                            'cuti' => 'info',
+                                            'izin' => 'azure',
+                                            'sakit' => 'purple',
+                                            default => 'secondary',
+                                        };
+                                    @endphp
+                                    <span class="badge bg-{{ $statusColor }}">
+                                        {{ ucfirst($absensi->status?->value ?? '-') }}
+                                    </span>
+                                    @if($absensi->sumber_data?->value === 'manual')
+                                        <span class="badge bg-secondary-lt text-muted ms-1" style="font-size:0.65rem">Manual</span>
+                                    @endif
+                                @else
+                                    <span class="badge bg-secondary">Belum</span>
                                 @endif
-                            </div>
-                        </div>
-                    @else
-                        <div class="card mb-3">
-                            <div class="card-header">
-                                <h4 class="card-title mb-0">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon me-2 text-green" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path d="M12 7v5l3 3"/></svg>
-                                    Absen Masuk
-                                </h4>
-                                <div class="text-muted small window-info">
-                                    Window: {{ $masukStatus['window']['open']->format('H:i') }} – {{ $masukStatus['window']['close']->format('H:i') }}
-                                </div>
-                            </div>
-                            <div class="card-body">
-                                @include('absensi.selfie._form-absen', [
-                                    'action' => route('absen.masuk'),
-                                    'btnLabel' => 'Absen Masuk',
-                                    'btnClass' => 'btn-success',
-                                    'formId' => 'form-masuk',
-                                ])
-                            </div>
-                        </div>
-                    @endif
-                @endif
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="text-muted small mt-2">
+        * Belum absen pulang - dihitung maksimal 225 menit sementara.
+    </div>
+</div>
 
-                {{-- FORM ABSEN PULANG (State D / E) --}}
-                @if($absensiHariIni && $absensiHariIni->jam_masuk && !$absensiHariIni->jam_pulang)
-                    @if(!$pulangStatus['allowed'])
-                        <div class="card mb-3 border-azure">
-                            <div class="card-body text-center py-3">
-                                <p class="mb-0 text-azure">{{ $pulangStatus['reason'] }}</p>
-                                @if(isset($pulangStatus['window']))
-                                    <div class="text-muted small mt-1 window-info">
-                                        Window absen pulang: {{ $pulangStatus['window']['open']->format('H:i') }} – {{ $pulangStatus['window']['close']->format('H:i') }}
-                                    </div>
-                                @endif
-                            </div>
-                        </div>
-                    @else
-                        <div class="card mb-3">
-                            <div class="card-header">
-                                <h4 class="card-title mb-0">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon me-2 text-blue" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path d="M12 7v5l3 3"/></svg>
-                                    Absen Pulang
-                                </h4>
-                                <div class="text-muted small window-info">
-                                    Window: {{ $pulangStatus['window']['open']->format('H:i') }} – {{ $pulangStatus['window']['close']->format('H:i') }}
-                                </div>
-                            </div>
-                            <div class="card-body">
-                                @include('absensi.selfie._form-absen', [
-                                    'action' => route('absen.pulang'),
-                                    'btnLabel' => 'Absen Pulang',
-                                    'btnClass' => 'btn-blue',
-                                    'formId' => 'form-pulang',
-                                ])
-                            </div>
-                        </div>
-                    @endif
-                @endif
-            @endif
-        @endif
-
+<div class="modal modal-blur fade" id="modalFoto" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalFotoLabel">Foto Absensi</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center p-2">
+                <img src="" id="modalFotoImg" class="modal-img-preview" alt="Foto absensi">
+            </div>
+        </div>
     </div>
 </div>
 @endsection
@@ -222,98 +313,16 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    // Auto-request GPS
-    const latInput  = document.querySelectorAll('input[name="latitude"]');
-    const lonInput  = document.querySelectorAll('input[name="longitude"]');
-    const gpsStatus = document.querySelectorAll('.gps-status-text');
+    const modalFoto = document.getElementById('modalFoto');
+    if (!modalFoto) return;
 
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-            (pos) => {
-                latInput.forEach(el => el.value = pos.coords.latitude);
-                lonInput.forEach(el => el.value = pos.coords.longitude);
-                gpsStatus.forEach(el => {
-                    el.innerHTML = '<span class="text-success">✓ Lokasi ditemukan</span>';
-                });
-            },
-            () => {
-                gpsStatus.forEach(el => {
-                    el.innerHTML = '<span class="text-warning">⚠ Lokasi tidak tersedia</span>';
-                });
-            },
-            { timeout: 10000, maximumAge: 60000 }
-        );
-    }
-
-    // Camera & capture logic per form
-    document.querySelectorAll('.absen-form-wrapper').forEach(function (wrapper) {
-        const video     = wrapper.querySelector('video');
-        const canvas    = wrapper.querySelector('canvas');
-        const btnKamera = wrapper.querySelector('.btn-kamera');
-        const btnAmbil  = wrapper.querySelector('.btn-ambil');
-        const btnUlangi = wrapper.querySelector('.btn-ulangi');
-        const btnSubmit = wrapper.querySelector('.btn-submit');
-        const fotoInput = wrapper.querySelector('input.foto-input');
-        let stream      = null;
-
-        btnKamera.addEventListener('click', async function () {
-            try {
-                stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
-                });
-                video.srcObject = stream;
-                video.style.display = 'block';
-                btnKamera.style.display = 'none';
-                btnAmbil.style.display  = 'inline-block';
-            } catch (e) {
-                alert('Kamera tidak dapat diakses. Pastikan izin kamera diberikan di browser.');
-            }
-        });
-
-        btnAmbil.addEventListener('click', function () {
-            canvas.width  = video.videoWidth;
-            canvas.height = video.videoHeight;
-            canvas.getContext('2d').drawImage(video, 0, 0);
-            canvas.style.display = 'block';
-            video.style.display  = 'none';
-            btnAmbil.style.display  = 'none';
-            btnUlangi.style.display = 'inline-block';
-            btnSubmit.disabled = false;
-
-            // Stop stream
-            if (stream) stream.getTracks().forEach(t => t.stop());
-
-            // Convert canvas to file input
-            canvas.toBlob(function (blob) {
-                const file = new File([blob], 'selfie.jpg', { type: 'image/jpeg' });
-                const dt   = new DataTransfer();
-                dt.items.add(file);
-                fotoInput.files = dt.files;
-            }, 'image/jpeg', 0.85);
-        });
-
-        btnUlangi.addEventListener('click', async function () {
-            canvas.style.display    = 'none';
-            btnUlangi.style.display = 'none';
-            btnSubmit.disabled      = true;
-
-            try {
-                stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
-                });
-                video.srcObject = stream;
-                video.style.display = 'block';
-                btnAmbil.style.display = 'inline-block';
-            } catch (e) {
-                btnKamera.style.display = 'inline-block';
-            }
-        });
-
-        // Loading state on submit
-        wrapper.closest('form').addEventListener('submit', function () {
-            btnSubmit.disabled = true;
-            btnSubmit.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Menyimpan...';
-        });
+    modalFoto.addEventListener('show.bs.modal', function (e) {
+        const trigger = e.relatedTarget;
+        document.getElementById('modalFotoImg').src = trigger.dataset.img;
+        document.getElementById('modalFotoLabel').textContent = trigger.dataset.label;
+    });
+    modalFoto.addEventListener('hidden.bs.modal', function () {
+        document.getElementById('modalFotoImg').src = '';
     });
 });
 </script>

@@ -129,7 +129,7 @@ class JadwalSecurityController extends Controller
             'lokasi_id'=> 'nullable|exists:lokasi,id',
         ]);
 
-        abort_unless(auth()->user()->can('jadwal.manage'), 403);
+        abort_unless(auth()->user()->hasRole('admin'), 403);
 
         $tanggal = Carbon::parse($request->tanggal);
         $window  = $this->editWindow($tanggal->month, $tanggal->year);
@@ -190,7 +190,7 @@ class JadwalSecurityController extends Controller
             'tahun' => 'required|integer',
         ]);
 
-        abort_unless(auth()->user()->can('jadwal.manage'), 403);
+        abort_unless(auth()->user()->hasRole('admin'), 403);
 
         $pjlpIds = Pjlp::active()->unit(UnitType::SECURITY)->pluck('id');
 
@@ -218,7 +218,7 @@ class JadwalSecurityController extends Controller
             'target_dates.*' => 'date',
         ]);
 
-        abort_unless(auth()->user()->can('jadwal.manage'), 403);
+        abort_unless(auth()->user()->hasRole('admin'), 403);
 
         $firstTarget = Carbon::parse($request->target_dates[0] ?? null);
         $window      = $this->editWindow($firstTarget->month, $firstTarget->year);

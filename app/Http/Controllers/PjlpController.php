@@ -22,7 +22,7 @@ class PjlpController extends Controller
         $query = Pjlp::with('user');
 
         // Filter berdasarkan role
-        if ($user->hasRole('koordinator')) {
+        if ($user->isKoordinator()) {
             $query->forKoordinator($user);
         }
 
@@ -113,7 +113,7 @@ class PjlpController extends Controller
     public function show(Pjlp $pjlp)
     {
         $this->authorize('view', $pjlp);
-        $pjlp->load(['user', 'absensi' => fn($q) => $q->latest()->take(10)]);
+        $pjlp->load(['user', 'absensi' => fn($q) => $q->with('shift')->latest()->take(10)]);
         return view('pjlp.show', compact('pjlp'));
     }
 

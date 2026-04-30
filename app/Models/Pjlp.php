@@ -81,7 +81,7 @@ class Pjlp extends Model
 
     public function scopeForKoordinator($query, User $user)
     {
-        if ($user->hasRole('koordinator') && $user->unit && $user->unit !== UnitType::ALL) {
+        if ($user->isKoordinator() && $user->unit && $user->unit !== UnitType::ALL) {
             return $query->where('unit', $user->unit);
         }
         return $query;

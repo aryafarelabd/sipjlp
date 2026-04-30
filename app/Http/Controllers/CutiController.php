@@ -22,47 +22,28 @@ class CutiController extends Controller
         $user  = $request->user();
         $query = Cuti::with(['pjlp', 'jenisCuti', 'approvedBy', 'approvedByDanru', 'approvedByChief', 'danru']);
 
-        if ($user->hasRole('pjlp') || $user->hasRole('danru') || $user->hasRole('chief')) {
-            $pjlp = $user->pjlp;
-            if (!$pjlp) {
-                return redirect()->route('dashboard')->with('error', 'Profil PJLP tidak ditemukan.');
-            }
+        $this->scopeCutiIndex($query, $user);
 
-            if ($user->hasRole('danru')) {
-                // Danru: cuti milik sendiri + cuti yang ditujukan ke danru ini
-                $query->where(function ($q) use ($pjlp) {
-                    $q->where('pjlp_id', $pjlp->id)
-                      ->orWhere('danru_id', $pjlp->id);
-                });
-            } elseif ($user->hasRole('chief')) {
-                // Chief: cuti semua security + cuti milik sendiri
-                $query->whereHas('pjlp', fn($q) => $q->where('unit', UnitType::SECURITY));
-            } else {
-                $query->forPjlp($pjlp->id);
-            }
-        } elseif ($user->hasRole('koordinator')) {
-            $query->whereHas('pjlp', function ($q) use ($user) {
-                $q->forKoordinator($user);
-            });
-        }
-
-        // Filter status
-        if ($request->filled('status')) {
-            $query->status($request->status);
-        }
-
-        // Filter tanggal
-        if ($request->filled('dari')) {
-            $query->whereDate('tgl_mulai', '>=', $request->dari);
-        }
-        if ($request->filled('sampai')) {
-            $query->whereDate('tgl_selesai', '<=', $request->sampai);
-        }
+        $this->applyCutiFilters($query, $request);
 
         $cuti          = $query->latest()->paginate(15);
         $jenisCutiList = JenisCuti::active()->get();
 
         return view('cuti.index', compact('cuti', 'jenisCutiList'));
+    }
+
+    public function validasi(Request $request)
+    {
+        abort_unless($request->user()->can('cuti.approve'), 403);
+
+        $query = Cuti::with(['pjlp', 'jenisCuti', 'approvedBy', 'approvedByDanru', 'approvedByChief', 'danru']);
+
+        $this->scopeCutiValidasi($query, $request->user());
+        $this->applyCutiFilters($query, $request);
+
+        $cuti = $query->oldest('tanggal_permohonan')->paginate(15);
+
+        return view('cuti.validasi', compact('cuti'));
     }
 
     public function create()
@@ -76,16 +57,23 @@ class CutiController extends Controller
 
         $jenisCutiList = JenisCuti::active()->get();
 
-        // Anggota security (role pjlp, unit security) perlu pilih danru
+        // Anggota security perlu pilih danru. Danru sendiri langsung ke Chief.
         $danruList = null;
-        if ($user->hasRole('pjlp') && $pjlp->unit === UnitType::SECURITY) {
+        if ($user->hasRole('pjlp') && !$user->hasAnyRole(['danru', 'chief']) && $pjlp->unit === UnitType::SECURITY) {
             $danruList = Pjlp::whereHas('user', fn($q) => $q->role('danru'))
                 ->where('unit', UnitType::SECURITY)
                 ->orderBy('nama')
                 ->get();
         }
 
-        return view('cuti.create', compact('pjlp', 'jenisCutiList', 'danruList'));
+        $approvalInfo = match (true) {
+            $user->hasRole('danru') => 'Pengajuan akan dikirim ke Chief → Koordinator secara berjenjang',
+            $user->hasRole('chief') => 'Pengajuan akan dikirim ke Koordinator untuk persetujuan akhir',
+            $danruList?->isNotEmpty() => 'Pengajuan akan dikirim ke Danru → Chief → Koordinator secara berjenjang',
+            default => 'Pengajuan cuti akan dikirim ke Koordinator untuk disetujui',
+        };
+
+        return view('cuti.create', compact('pjlp', 'jenisCutiList', 'danruList', 'approvalInfo'));
     }
 
     public function store(StoreCutiRequest $request)
@@ -158,21 +146,9 @@ class CutiController extends Controller
 
     public function show(Cuti $cuti)
     {
-        $user = auth()->user();
+        $this->authorize('view', $cuti);
 
-        // Check access
-        if ($user->hasRole('pjlp') && $cuti->pjlp_id !== $user->pjlp?->id) {
-            abort(403);
-        }
-
-        if ($user->hasRole('koordinator')) {
-            $pjlp = $cuti->pjlp;
-            if ($user->unit && $user->unit->value !== 'all' && $pjlp->unit->value !== $user->unit->value) {
-                abort(403);
-            }
-        }
-
-        $cuti->load(['pjlp', 'jenisCuti', 'approvedBy']);
+        $cuti->load(['pjlp', 'jenisCuti', 'approvedBy', 'approvedByDanru', 'approvedByChief', 'danru']);
 
         return view('cuti.show', compact('cuti'));
     }
@@ -243,5 +219,87 @@ class CutiController extends Controller
         }
 
         return back()->with('success', 'Cuti berhasil ditolak.');
+    }
+
+    private function scopeCutiIndex($query, User $user): void
+    {
+        if ($user->hasRole('admin') || $user->can('cuti.view-all')) {
+            return;
+        }
+
+        if ($user->hasAnyRole(['pjlp', 'danru', 'chief'])) {
+            $pjlp = $user->pjlp;
+            if (!$pjlp) {
+                $query->whereRaw('1 = 0');
+                return;
+            }
+
+            $query->forPjlp($pjlp->id);
+            return;
+        }
+
+        if ($user->hasRole('koordinator') || $user->can('cuti.view-unit')) {
+            $query->whereHas('pjlp', function ($q) use ($user) {
+                if ($user->unit && $user->unit->value !== 'all') {
+                    $q->where('unit', $user->unit);
+                }
+            });
+            return;
+        }
+
+        $pjlp = $user->pjlp;
+        if (!$pjlp) {
+            $query->whereRaw('1 = 0');
+            return;
+        }
+
+        $query->forPjlp($pjlp->id);
+    }
+
+    private function scopeCutiValidasi($query, User $user): void
+    {
+        if ($user->hasRole('admin')) {
+            $query->pending();
+            return;
+        }
+
+        if ($user->hasRole('danru')) {
+            $query->where('status', StatusCuti::MENUNGGU_DANRU)
+                ->where('danru_id', $user->pjlp?->id);
+            return;
+        }
+
+        if ($user->hasRole('chief')) {
+            $query->where('status', StatusCuti::MENUNGGU_CHIEF)
+                ->whereHas('pjlp', fn ($q) => $q->where('unit', UnitType::SECURITY));
+            return;
+        }
+
+        if ($user->hasRole('koordinator')) {
+            $query->whereIn('status', [StatusCuti::MENUNGGU, StatusCuti::MENUNGGU_KOORDINATOR])
+                ->whereHas('pjlp', function ($q) use ($user) {
+                    if ($user->unit && $user->unit->value !== 'all') {
+                        $q->where('unit', $user->unit);
+                    }
+                });
+            return;
+        }
+
+        $query->whereRaw('1 = 0');
+    }
+
+    private function applyCutiFilters($query, Request $request): void
+    {
+        if ($request->filled('status')) {
+            $query->status($request->status);
+        }
+
+        if ($request->filled('dari')) {
+            $query->whereDate('tgl_mulai', '>=', $request->dari);
+        }
+
+        if ($request->filled('sampai')) {
+            $query->whereDate('tgl_selesai', '<=', $request->sampai);
+        }
     }
 }

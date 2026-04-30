@@ -42,6 +42,19 @@
                                 @enderror
                             </div>
 
+                            <div class="mb-3">
+                                <label class="form-label">Username</label>
+                                <input type="text" name="username"
+                                       class="form-control @error('username') is-invalid @enderror"
+                                       value="{{ old('username') }}"
+                                       placeholder="contoh: budi.santoso"
+                                       autocomplete="off">
+                                @error('username')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                                <div class="form-hint">Huruf kecil, angka, titik, underscore. Digunakan untuk login.</div>
+                            </div>
+
                             <div class="mb-3" id="nipSection" style="display:none;">
                                 <label class="form-label">NIP <span class="text-red" id="nipRequired">*</span></label>
                                 <input type="text" name="nip" id="nipInput"
@@ -95,72 +108,118 @@
                         </div>
                         <div class="card-body">
 
-                            {{-- Role selector cards --}}
-                            <div class="mb-3">
-                                <label class="form-label required">Role</label>
-                                <div class="row g-2" id="roleCards">
-                                    @php
-                                        $roleInfo = [
-                                            'pjlp'        => ['color' => 'green',  'icon' => 'ti-id-badge',    'desc' => 'Absen selfie, lembar kerja, cuti'],
-                                            'koordinator' => ['color' => 'blue',   'icon' => 'ti-user-check',  'desc' => 'Kelola jadwal & rekap unit'],
-                                            'admin'       => ['color' => 'red',    'icon' => 'ti-settings',    'desc' => 'Akses penuh ke semua fitur'],
-                                            'manajemen'   => ['color' => 'purple', 'icon' => 'ti-chart-bar',   'desc' => 'Lihat laporan & statistik'],
-                                        ];
-                                    @endphp
-                                    @foreach($roles as $role)
-                                    @php $info = $roleInfo[$role->name] ?? ['color' => 'secondary', 'icon' => 'ti-user', 'desc' => '']; @endphp
-                                    <div class="col-6 col-md-3">
-                                        <label class="role-card d-block cursor-pointer">
-                                            <input type="radio" name="role" value="{{ $role->name }}"
-                                                   class="d-none role-radio"
-                                                   {{ old('role') == $role->name ? 'checked' : '' }} required>
-                                            <div class="card card-sm text-center p-2 role-card-inner border-2"
-                                                 data-color="{{ $info['color'] }}">
-                                                <div class="avatar avatar-sm bg-{{ $info['color'] }}-lt mx-auto mb-1 mt-1">
-                                                    <i class="ti {{ $info['icon'] }}"></i>
-                                                </div>
-                                                <div class="fw-bold small">{{ ucfirst($role->name) }}</div>
-                                                <div class="text-muted" style="font-size:0.68rem;line-height:1.3">{{ $info['desc'] }}</div>
+                            {{-- Role --}}
+                            @php
+                                $cr = old('role');
+                                $cu = old('unit');
+                                $isPjlp    = in_array($cr, ['pjlp', 'danru']);
+                                $isKoord   = in_array($cr, ['koordinator', 'chief']);
+                                $isPjlpCs  = $isPjlp && $cu === 'cleaning';
+                                $isPjlpSec = $isPjlp && $cu === 'security';
+                                $isDanru   = $cr === 'danru';
+                                $isChief   = $cr === 'chief';
+                                $isKoordCs = $isKoord && !$isChief;
+                            @endphp
+                            <div class="mb-1">
+                                <label class="form-label required mb-2">Tipe Akun</label>
+
+                                <div class="role-option-list">
+
+                                    <label class="role-option cursor-pointer {{ $isPjlp ? 'active' : '' }}">
+                                        <input type="radio" name="_g1" value="pjlp" class="d-none g1-radio" {{ $isPjlp ? 'checked' : '' }} required>
+                                        <div class="role-option-body">
+                                            <span class="role-dot bg-green"></span>
+                                            <div class="flex-grow-1">
+                                                <div class="fw-semibold">PJLP <span class="badge bg-green-lt text-green ms-1" style="font-size:0.65rem;">Pegawai Lapangan</span></div>
+                                                <div class="text-muted small">Absen finger, lembar kerja harian, pengajuan cuti</div>
                                             </div>
-                                        </label>
-                                    </div>
-                                    @endforeach
+                                            <i class="ti ti-chevron-right role-chevron text-muted"></i>
+                                        </div>
+                                        <div class="role-sub-section" id="pjlpUnitSec" style="{{ $isPjlp ? '' : 'display:none;' }}" onclick="event.stopPropagation()">
+                                            <div class="small text-muted mb-2">Pilih unit:</div>
+                                            <div class="d-flex flex-wrap gap-2 mb-1">
+                                                <label class="sub-role-btn cursor-pointer {{ $isPjlpCs ? 'active' : '' }}">
+                                                    <input type="radio" name="_g2_pjlp" value="cs" class="d-none g2-pjlp-radio" {{ $isPjlpCs ? 'checked' : '' }}>
+                                                    <i class="ti ti-building-hospital me-1"></i> PJLP CS
+                                                </label>
+                                                <label class="sub-role-btn cursor-pointer {{ ($isPjlpSec || $isDanru) ? 'active' : '' }}">
+                                                    <input type="radio" name="_g2_pjlp" value="security" class="d-none g2-pjlp-radio" {{ ($isPjlpSec || $isDanru) ? 'checked' : '' }}>
+                                                    <i class="ti ti-shield me-1"></i> PJLP Security
+                                                    <i class="ti ti-chevron-right ms-1 text-muted" style="font-size:0.75rem;"></i>
+                                                </label>
+                                            </div>
+                                            <div id="securitySubSec" style="{{ ($isPjlpSec || $isDanru) ? '' : 'display:none;' }}" class="mt-2 ps-2 border-start border-2 border-green">
+                                                <div class="small text-muted mb-2">Pilih jabatan:</div>
+                                                <div class="d-flex flex-wrap gap-2">
+                                                    <label class="sub-role-btn cursor-pointer {{ ($isPjlpSec && !$isDanru) ? 'active' : '' }}">
+                                                        <input type="radio" name="_g3_sec" value="anggota" class="d-none g3-sec-radio" {{ ($isPjlpSec && !$isDanru) ? 'checked' : '' }}>
+                                                        <i class="ti ti-user me-1"></i> Anggota
+                                                    </label>
+                                                    <label class="sub-role-btn cursor-pointer {{ $isDanru ? 'active' : '' }}">
+                                                        <input type="radio" name="_g3_sec" value="danru" class="d-none g3-sec-radio" {{ $isDanru ? 'checked' : '' }}>
+                                                        <i class="ti ti-star me-1"></i> Danru
+                                                        <span class="text-muted ms-1" style="font-size:0.72rem;">(Kepala Regu)</span>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </label>
+
+                                    <label class="role-option cursor-pointer {{ $isKoord ? 'active' : '' }}">
+                                        <input type="radio" name="_g1" value="koordinator" class="d-none g1-radio" {{ $isKoord ? 'checked' : '' }}>
+                                        <div class="role-option-body">
+                                            <span class="role-dot bg-blue"></span>
+                                            <div class="flex-grow-1">
+                                                <div class="fw-semibold">Koordinator / Chief</div>
+                                                <div class="text-muted small">Kelola jadwal, validasi cuti & pekerjaan, rekap absensi unit</div>
+                                            </div>
+                                            <i class="ti ti-chevron-right role-chevron text-muted"></i>
+                                        </div>
+                                        <div class="role-sub-section" id="koordUnitSec" style="{{ $isKoord ? '' : 'display:none;' }}" onclick="event.stopPropagation()">
+                                            <div class="small text-muted mb-2">Pilih unit:</div>
+                                            <div class="d-flex flex-wrap gap-2">
+                                                <label class="sub-role-btn cursor-pointer {{ $isKoordCs ? 'active' : '' }}">
+                                                    <input type="radio" name="_g2_koord" value="cs" class="d-none g2-koord-radio" {{ $isKoordCs ? 'checked' : '' }}>
+                                                    <i class="ti ti-building-hospital me-1"></i> Koordinator CS
+                                                </label>
+                                                <label class="sub-role-btn cursor-pointer {{ $isChief ? 'active' : '' }}">
+                                                    <input type="radio" name="_g2_koord" value="security" class="d-none g2-koord-radio" {{ $isChief ? 'checked' : '' }}>
+                                                    <i class="ti ti-shield-check me-1"></i> Chief Security
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </label>
+
+                                    <label class="role-option cursor-pointer {{ $cr === 'admin' ? 'active' : '' }}">
+                                        <input type="radio" name="_g1" value="admin" class="d-none g1-radio" {{ $cr === 'admin' ? 'checked' : '' }}>
+                                        <div class="role-option-body">
+                                            <span class="role-dot bg-red"></span>
+                                            <div class="flex-grow-1">
+                                                <div class="fw-semibold">Admin</div>
+                                                <div class="text-muted small">Akses penuh ke seluruh fitur dan manajemen user</div>
+                                            </div>
+                                        </div>
+                                    </label>
+
+                                    <label class="role-option cursor-pointer {{ $cr === 'manajemen' ? 'active' : '' }}">
+                                        <input type="radio" name="_g1" value="manajemen" class="d-none g1-radio" {{ $cr === 'manajemen' ? 'checked' : '' }}>
+                                        <div class="role-option-body">
+                                            <span class="role-dot bg-purple"></span>
+                                            <div class="flex-grow-1">
+                                                <div class="fw-semibold">Manajemen</div>
+                                                <div class="text-muted small">Hanya lihat laporan dan statistik, tidak bisa ubah data</div>
+                                            </div>
+                                        </div>
+                                    </label>
+
                                 </div>
+
+                                <input type="hidden" name="role" id="hiddenRole" value="{{ $cr }}">
+                                <input type="hidden" name="unit" id="hiddenUnit" value="{{ $cu }}">
+
                                 @error('role')
                                 <div class="text-danger small mt-1">{{ $message }}</div>
                                 @enderror
-                            </div>
-
-                            {{-- Unit — hanya muncul untuk pjlp & koordinator --}}
-                            <div id="unitSection" class="mb-3" style="display:none;">
-                                <label class="form-label" id="unitLabel">Unit</label>
-                                <div class="row g-2">
-                                    @foreach(\App\Enums\UnitType::cases() as $unit)
-                                    <div class="col-auto">
-                                        <label class="form-check form-check-inline">
-                                            <input class="form-check-input" type="radio"
-                                                   name="unit" value="{{ $unit->value }}"
-                                                   {{ old('unit') == $unit->value ? 'checked' : '' }}>
-                                            <span class="form-check-label fw-medium">{{ $unit->label() }}</span>
-                                        </label>
-                                    </div>
-                                    @endforeach
-                                    <div class="col-auto" id="unitNoneOption">
-                                        <label class="form-check form-check-inline">
-                                            <input class="form-check-input" type="radio"
-                                                   name="unit" value=""
-                                                   {{ old('unit') === null ? 'checked' : '' }}>
-                                            <span class="form-check-label text-muted">Tidak Ada</span>
-                                        </label>
-                                    </div>
-                                </div>
-                                <div class="form-hint" id="unitHint"></div>
-                            </div>
-
-                            {{-- Info box hak akses per role --}}
-                            <div id="roleInfoBox" class="alert alert-info d-none" style="font-size:0.85rem;">
-                                <i class="ti ti-info-circle me-1"></i>
-                                <span id="roleInfoText"></span>
                             </div>
 
                         </div>
@@ -194,56 +253,98 @@
 
 @push('styles')
 <style>
-.role-card-inner { transition: border-color .15s, background .15s; border-color: transparent !important; }
-.role-radio:checked + .role-card-inner { border-color: var(--tblr-primary) !important; background: var(--tblr-primary-lt); }
-.role-radio[value="pjlp"]:checked + .role-card-inner        { border-color: #2fb344 !important; background: #d1f0d8; }
-.role-radio[value="koordinator"]:checked + .role-card-inner { border-color: #206bc4 !important; background: #dce8f8; }
-.role-radio[value="admin"]:checked + .role-card-inner       { border-color: #d63939 !important; background: #fce8e8; }
-.role-radio[value="manajemen"]:checked + .role-card-inner   { border-color: #ae3ec9 !important; background: #f3d9f8; }
 .cursor-pointer { cursor: pointer; }
+.role-option-list { display: flex; flex-direction: column; gap: 0; border: 1px solid var(--tblr-border-color); border-radius: 8px; overflow: hidden; }
+.role-option { display: block; margin: 0; border-bottom: 1px solid var(--tblr-border-color); transition: background .12s; }
+.role-option:last-child { border-bottom: none; }
+.role-option:hover { background: var(--tblr-bg-surface-secondary); }
+.role-option.active { background: #f0faf2; }
+.role-option-body { display: flex; align-items: center; gap: 12px; padding: 12px 14px; }
+.role-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.role-chevron { transition: transform .2s; font-size: 1rem; }
+.role-option.active .role-chevron { transform: rotate(90deg); }
+.role-sub-section { padding: 10px 14px 14px 36px; background: #f6fdf7; border-top: 1px dashed #b8e8c2; }
+.sub-role-btn { display: inline-flex; align-items: center; padding: 5px 12px; border-radius: 20px; border: 1.5px solid #cde9d2; background: #fff; font-size: 0.82rem; font-weight: 500; transition: border-color .12s, background .12s, color .12s; white-space: nowrap; }
+.sub-role-btn:hover { border-color: #2fb344; background: #edfaef; }
+.sub-role-btn.active { border-color: #2fb344 !important; background: #d4f0da !important; color: #1a7a2e; font-weight: 600; }
 </style>
 @endpush
 
 @push('scripts')
 <script>
-const roleInfo = {
-    pjlp:        { showUnit: true,  showNip: true,  unitRequired: false, hint: 'Unit hanya informasi tambahan untuk PJLP. Data unit utama ada di profil PJLP.', info: 'PJLP dapat absen selfie, isi lembar kerja, dan mengajukan cuti.' },
-    koordinator: { showUnit: true,  showNip: false, unitRequired: true,  hint: 'Koordinator hanya bisa melihat PJLP di unitnya.', info: 'Koordinator mengelola jadwal, melihat rekap absensi, dan memvalidasi pekerjaan untuk unitnya.' },
-    admin:       { showUnit: false, showNip: false, unitRequired: false, hint: '', info: 'Admin memiliki akses penuh ke seluruh fitur sistem termasuk manajemen user dan master data.' },
-    manajemen:   { showUnit: false, showNip: false, unitRequired: false, hint: '', info: 'Manajemen hanya bisa melihat laporan dan statistik, tidak bisa mengubah data.' },
-};
-
-function onRoleChange(role) {
-    const cfg = roleInfo[role] || { showUnit: false, showNip: false, unitRequired: false, hint: '', info: '' };
-    const unitSection = document.getElementById('unitSection');
-    const unitHint    = document.getElementById('unitHint');
-    const unitLabel   = document.getElementById('unitLabel');
-    const infoBox     = document.getElementById('roleInfoBox');
-    const infoText    = document.getElementById('roleInfoText');
-    const nipSection  = document.getElementById('nipSection');
-    const nipInput    = document.getElementById('nipInput');
-
-    unitSection.style.display = cfg.showUnit ? '' : 'none';
-    unitHint.textContent = cfg.hint;
-    unitLabel.textContent = cfg.unitRequired ? 'Unit *' : 'Unit';
-
-    nipSection.style.display = cfg.showNip ? '' : 'none';
-    nipInput.required = cfg.showNip;
-
-    if (cfg.info) {
-        infoText.textContent = cfg.info;
-        infoBox.classList.remove('d-none');
-    } else {
-        infoBox.classList.add('d-none');
-    }
+function setG1Active(g1El) {
+    document.querySelectorAll('.role-option').forEach(el => el.classList.remove('active'));
+    g1El.classList.add('active');
+}
+function setSubActive(container, activeEl) {
+    container.querySelectorAll('.sub-role-btn').forEach(b => b.classList.remove('active'));
+    activeEl.classList.add('active');
+}
+function syncNip() {
+    const g1 = document.querySelector('.g1-radio:checked')?.value;
+    const nip = document.getElementById('nipSection');
+    if (nip) nip.style.display = (g1 === 'admin' || g1 === 'manajemen') ? 'none' : '';
 }
 
-document.querySelectorAll('.role-radio').forEach(radio => {
-    radio.addEventListener('change', () => onRoleChange(radio.value));
+document.querySelectorAll('.g1-radio').forEach(radio => {
+    radio.addEventListener('change', () => {
+        const g1 = radio.value;
+        setG1Active(radio.closest('.role-option'));
+        const pjlpSec  = document.getElementById('pjlpUnitSec');
+        const koordSec = document.getElementById('koordUnitSec');
+        const secSub   = document.getElementById('securitySubSec');
+        pjlpSec.style.display  = g1 === 'pjlp'       ? '' : 'none';
+        koordSec.style.display = g1 === 'koordinator' ? '' : 'none';
+        if (secSub) secSub.style.display = 'none';
+        document.querySelectorAll('.g2-pjlp-radio,.g2-koord-radio,.g3-sec-radio').forEach(r => r.checked = false);
+        document.querySelectorAll('#pjlpUnitSec .sub-role-btn,#koordUnitSec .sub-role-btn,#securitySubSec .sub-role-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('hiddenRole').value = (g1 !== 'pjlp' && g1 !== 'koordinator') ? g1 : '';
+        document.getElementById('hiddenUnit').value = '';
+        syncNip();
+    });
 });
 
-// Init on load (e.g. validation error redirect with old value)
-const checkedRole = document.querySelector('.role-radio:checked');
-if (checkedRole) onRoleChange(checkedRole.value);
+document.querySelectorAll('.g2-pjlp-radio').forEach(radio => {
+    radio.addEventListener('change', () => {
+        const unit = radio.value;
+        setSubActive(document.getElementById('pjlpUnitSec'), radio.closest('.sub-role-btn'));
+        const secSub = document.getElementById('securitySubSec');
+        if (unit === 'cs') {
+            secSub.style.display = 'none';
+            document.querySelectorAll('.g3-sec-radio').forEach(r => r.checked = false);
+            document.querySelectorAll('#securitySubSec .sub-role-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('hiddenRole').value = 'pjlp';
+            document.getElementById('hiddenUnit').value = 'cleaning';
+        } else {
+            secSub.style.display = '';
+            const g3 = document.querySelector('.g3-sec-radio:checked');
+            if (!g3) {
+                const first = document.querySelector('.g3-sec-radio');
+                if (first) { first.checked = true; first.closest('.sub-role-btn').classList.add('active'); }
+            }
+            const g3val = document.querySelector('.g3-sec-radio:checked')?.value ?? 'anggota';
+            document.getElementById('hiddenRole').value = g3val === 'danru' ? 'danru' : 'pjlp';
+            document.getElementById('hiddenUnit').value = 'security';
+        }
+    });
+});
+
+document.querySelectorAll('.g3-sec-radio').forEach(radio => {
+    radio.addEventListener('change', () => {
+        setSubActive(document.getElementById('securitySubSec'), radio.closest('.sub-role-btn'));
+        document.getElementById('hiddenRole').value = radio.value === 'danru' ? 'danru' : 'pjlp';
+        document.getElementById('hiddenUnit').value = 'security';
+    });
+});
+
+document.querySelectorAll('.g2-koord-radio').forEach(radio => {
+    radio.addEventListener('change', () => {
+        setSubActive(document.getElementById('koordUnitSec'), radio.closest('.sub-role-btn'));
+        document.getElementById('hiddenRole').value = radio.value === 'cs' ? 'koordinator' : 'chief';
+        document.getElementById('hiddenUnit').value = radio.value === 'cs' ? 'cleaning' : 'security';
+    });
+});
+
+syncNip();
 </script>
 @endpush
