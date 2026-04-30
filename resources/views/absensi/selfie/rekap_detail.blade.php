@@ -226,7 +226,7 @@
                                             default     => 'secondary',
                                         };
                                     @endphp
-                                    <span class="badge bg-{{ $statusColor }}">
+                                    <span class="badge bg-{{ $statusColor }} text-white">
                                         {{ ucfirst($absensi->status?->value ?? '-') }}
                                     </span>
                                     @if($absensi->sumber_data?->value === 'manual')
