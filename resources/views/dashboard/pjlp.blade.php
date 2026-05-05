@@ -63,7 +63,7 @@
                             </span>
                             @endif
                         @else
-                        <span class="badge bg-secondary fs-5 py-2 px-3">Belum Ada Jadwal</span>
+                        <span class="badge bg-secondary text-white fs-5 py-2 px-3">Belum Ada Jadwal</span>
                         @endif
                     </div>
                 </div>
@@ -275,13 +275,19 @@
                     <div class="col-6 col-md-3 col-lg-2">
                         <a href="{{ route('pengawasan-proyek.index') }}" class="card card-link card-link-pop text-center p-3 h-100">
                             <span class="avatar avatar-md bg-teal-lt mb-2 mx-auto"><i class="ti ti-building-factory-2 fs-3"></i></span>
-                            <div class="fw-medium small">Awas Proyek</div>
+                            <div class="fw-medium small">Pengawasan Proyek</div>
                         </a>
                     </div>
                     <div class="col-6 col-md-3 col-lg-2">
                         <a href="{{ route('laporan-kecelakaan.index') }}" class="card card-link card-link-pop text-center p-3 h-100">
                             <span class="avatar avatar-md bg-danger-lt mb-2 mx-auto"><i class="ti ti-alert-triangle fs-3"></i></span>
-                            <div class="fw-medium small">Laporan K3</div>
+                            <div class="fw-medium small">Laporan Kecelakaan</div>
+                        </a>
+                    </div>
+                    <div class="col-6 col-md-3 col-lg-2">
+                        <a href="{{ route('laporan-parkir.index') }}" class="card card-link card-link-pop text-center p-3 h-100">
+                            <span class="avatar avatar-md bg-blue-lt mb-2 mx-auto"><i class="ti ti-car fs-3"></i></span>
+                            <div class="fw-medium small">Laporan Parkir</div>
                         </a>
                     </div>
                     @endif
@@ -357,11 +363,12 @@
                         @else
                         @php
                         $secModules = [
-                            ['label' => 'Patrol Inspeksi',    'count' => $unitStats['patrol'],          'icon' => 'ti-shield-check',       'color' => 'purple'],
-                            ['label' => 'Hydrant Outdoor',    'count' => $unitStats['hydrant_outdoor'], 'icon' => 'ti-flame',              'color' => 'red'],
-                            ['label' => 'Hydrant Indoor',     'count' => $unitStats['hydrant_indoor'],  'icon' => 'ti-flame-off',          'color' => 'orange'],
-                            ['label' => 'APAR & APAB',        'count' => $unitStats['apar'],            'icon' => 'ti-fire-extinguisher',  'color' => 'yellow'],
-                            ['label' => 'Pengawasan Proyek',  'count' => $unitStats['proyek'],          'icon' => 'ti-building-factory-2', 'color' => 'teal'],
+                            ['label' => 'Patrol Inspeksi',       'count' => $unitStats['patrol'],          'icon' => 'ti-shield-check',       'color' => 'purple'],
+                            ['label' => 'Hydrant Outdoor',       'count' => $unitStats['hydrant_outdoor'], 'icon' => 'ti-flame',              'color' => 'red'],
+                            ['label' => 'Hydrant Indoor',        'count' => $unitStats['hydrant_indoor'],  'icon' => 'ti-flame-off',          'color' => 'orange'],
+                            ['label' => 'APAR & APAB',           'count' => $unitStats['apar'],            'icon' => 'ti-fire-extinguisher',  'color' => 'yellow'],
+                            ['label' => 'Pengawasan Proyek',     'count' => $unitStats['proyek'],          'icon' => 'ti-building-factory-2', 'color' => 'teal'],
+                            ['label' => 'Laporan Parkir',        'count' => $unitStats['parkir'] ?? 0,     'icon' => 'ti-car',                'color' => 'blue'],
                         ];
                         @endphp
                         <div class="divide-y">
@@ -407,36 +414,8 @@
                 </div>
             </div>
 
-            {{-- Sisa Cuti + Cuti Pending --}}
+            {{-- Pengajuan Cuti --}}
             <div class="col-lg-6">
-                @if(count($sisaCuti) > 0)
-                <div class="card mb-3">
-                    <div class="card-header">
-                        <h3 class="card-title"><i class="ti ti-calendar-stats me-2 text-primary"></i>Sisa Cuti {{ date('Y') }}</h3>
-                    </div>
-                    <div class="card-body py-2">
-                        @foreach($sisaCuti as $cuti)
-                        <div class="row align-items-center py-2 {{ !$loop->last ? 'border-bottom' : '' }}">
-                            <div class="col-auto">
-                                <span class="avatar avatar-sm bg-{{ $cuti['sisa'] > 0 ? 'success' : 'danger' }}-lt">
-                                    <i class="ti ti-calendar-event"></i>
-                                </span>
-                            </div>
-                            <div class="col">
-                                <div class="fw-medium small">{{ $cuti['jenis'] }}</div>
-                                <div class="text-muted" style="font-size:11px;">Terpakai {{ $cuti['terpakai'] }}/{{ $cuti['max_hari'] }} hari</div>
-                            </div>
-                            <div class="col-auto">
-                                <span class="badge bg-{{ $cuti['sisa'] > 0 ? 'success' : 'danger' }} fs-6">
-                                    {{ $cuti['sisa'] }}
-                                </span>
-                            </div>
-                        </div>
-                        @endforeach
-                    </div>
-                </div>
-                @endif
-
                 <div class="card">
                     <div class="card-header">
                         <h3 class="card-title"><i class="ti ti-hourglass me-2 text-warning"></i>Pengajuan Cuti</h3>

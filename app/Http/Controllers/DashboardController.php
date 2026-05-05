@@ -23,6 +23,7 @@ use App\Models\LogbookLimbah;
 use App\Models\LogbookB3;
 use App\Models\PatrolInspeksi;
 use App\Models\PengecekanApar;
+use App\Models\LaporanParkir;
 use App\Models\PengawasanProyek;
 use App\Models\Pjlp;
 use Carbon\Carbon;
@@ -147,6 +148,7 @@ class DashboardController extends Controller
                 'hydrant_indoor'  => InspeksiHydrantIndoor::where('pjlp_id', $pjlp->id)->whereMonth('tanggal', $month)->whereYear('tanggal', $year)->count(),
                 'apar'            => PengecekanApar::where('pjlp_id', $pjlp->id)->whereMonth('tanggal', $month)->whereYear('tanggal', $year)->count(),
                 'proyek'          => PengawasanProyek::where('pjlp_id', $pjlp->id)->whereMonth('tanggal', $month)->whereYear('tanggal', $year)->count(),
+                'parkir'          => LaporanParkir::where('pjlp_id', $pjlp->id)->whereMonth('tanggal', $month)->whereYear('tanggal', $year)->count(),
             ];
         }
 
