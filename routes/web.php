@@ -77,7 +77,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/absen', [AbsensiSelfieController::class, 'showAbsenPage'])->name('absen.index');
         Route::redirect('/jadwal-saya', '/absen')->name('jadwal-saya.index');
     });
-    Route::middleware('role:admin|koordinator|chief|manajemen')->group(function () {
+    Route::middleware('role:admin|koordinator|chief|pj_cs|manajemen')->group(function () {
         Route::get('/absensi/rekap', [AbsensiSelfieController::class, 'rekapAbsensi'])
             ->name('absensi.rekap');
         Route::get('/absensi/rekap/export', [AbsensiSelfieController::class, 'exportRekap'])
@@ -110,7 +110,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/lembar-kerja/detail/{detail}', [LembarKerjaController::class, 'deleteDetail'])->name('lembar-kerja.detail.destroy');
 
     // Jadwal Shift Security
-    Route::prefix('jadwal-security')->name('jadwal-security.')->middleware('role:admin')->group(function () {
+    Route::prefix('jadwal-security')->name('jadwal-security.')->middleware('role:admin|chief')->group(function () {
         Route::get('/', [JadwalSecurityController::class, 'index'])->name('index');
         Route::post('/update', [JadwalSecurityController::class, 'update'])->name('update');
         Route::post('/publish', [JadwalSecurityController::class, 'publish'])->name('publish');
@@ -124,6 +124,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/publish', [JadwalShiftCsController::class, 'publish'])->name('publish');
         Route::post('/bulk-update', [JadwalShiftCsController::class, 'bulkUpdate'])->name('bulk-update');
         Route::post('/copy-from-date', [JadwalShiftCsController::class, 'copyFromDate'])->name('copy-from-date');
+        // Buka/tutup paksa jadwal — hanya koordinator & admin
+        Route::post('/set-override', [JadwalShiftCsController::class, 'setOverride'])->name('set-override');
     });
 
     // Jadwal Kerja CS Bulanan
@@ -187,22 +189,22 @@ Route::middleware('auth')->group(function () {
         Route::get('/rekap', [LogbookLimbahController::class, 'index'])->name('rekap');
     });
 
-    // Gerakan Jumat Sehat
+    // Gerakan Jumat Sehat — K3, tidak perlu shift aktif
     Route::prefix('gerakan-jumat-sehat')->name('gerakan-jumat-sehat.')->group(function () {
         Route::get('/', [GerakanJumatSehatController::class, 'index'])->name('index');
         Route::post('/', [GerakanJumatSehatController::class, 'store'])->name('store');
         Route::get('/rekap', [GerakanJumatSehatController::class, 'rekap'])->name('rekap')
-            ->middleware('role:admin|koordinator|chief');
+            ->middleware('role:admin|koordinator|chief|pj_cs|manajemen');
     });
 
     // Laporan Parkir Menginap
     Route::prefix('laporan-parkir')->name('laporan-parkir.')->group(function () {
-        Route::get('/', [LaporanParkirController::class, 'index'])->name('index');
-        Route::post('/', [LaporanParkirController::class, 'store'])->name('store');
+        Route::get('/', [LaporanParkirController::class, 'index'])->name('index')->middleware('restrict.shift');
+        Route::post('/', [LaporanParkirController::class, 'store'])->name('store')->middleware('restrict.shift');
         Route::get('/rekap', [LaporanParkirController::class, 'rekap'])->name('rekap');
     });
 
-    // Laporan Kecelakaan Kerja, Insiden & Ketidaksesuaian (K3)
+    // Laporan Kecelakaan Kerja, Insiden & Ketidaksesuaian (K3) — tidak perlu shift aktif
     Route::prefix('laporan-kecelakaan')->name('laporan-kecelakaan.')->group(function () {
         Route::get('/', [LaporanKecelakaanController::class, 'index'])->name('index');
         Route::post('/', [LaporanKecelakaanController::class, 'store'])->name('store');
@@ -300,12 +302,14 @@ Route::middleware('auth')->group(function () {
         Route::post('/app-settings/jadwal-cs-window', [AppSettingController::class, 'updateJadwalCsWindow'])->name('app-settings.jadwal-cs-window');
         Route::resource('shift', ShiftController::class);
         Route::resource('jenis-cuti', JenisCutiController::class);
-        Route::prefix('kegiatan-lk-cs')->name('kegiatan-lk-cs.')->group(function () {
-            Route::get('/', [KegiatanLkCsController::class, 'index'])->name('index');
-            Route::post('/', [KegiatanLkCsController::class, 'store'])->name('store');
-            Route::put('/{kegiatanLkC}', [KegiatanLkCsController::class, 'update'])->name('update');
-            Route::delete('/{kegiatanLkC}', [KegiatanLkCsController::class, 'destroy'])->name('destroy');
-        });
+    });
+
+    // Kegiatan LK CS — admin, koordinator CS, pj_cs
+    Route::prefix('master/kegiatan-lk-cs')->name('master.kegiatan-lk-cs.')->middleware('can:jadwal-cs.manage')->group(function () {
+        Route::get('/', [KegiatanLkCsController::class, 'index'])->name('index');
+        Route::post('/', [KegiatanLkCsController::class, 'store'])->name('store');
+        Route::put('/{kegiatanLkC}', [KegiatanLkCsController::class, 'update'])->name('update');
+        Route::delete('/{kegiatanLkC}', [KegiatanLkCsController::class, 'destroy'])->name('destroy');
     });
 
     // Lokasi — admin dan koordinator Security (jadwal.manage)

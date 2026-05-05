@@ -38,11 +38,13 @@
                 $isKoordinator     = $user->hasRole('koordinator');
                 $isDanru           = $user->hasRole('danru');
                 $isChief           = $user->hasRole('chief');
-                $isAdminOrKoordinator = $isAdmin || $isKoordinator || $user->hasRole('manajemen');
+                $isPjCs            = $user->hasRole('pj_cs');
+                $isManajemen       = $user->hasRole('manajemen');
+                $isAdminOrKoordinator = $isAdmin || $isKoordinator || $isManajemen || $isPjCs;
 
                 // Unit koordinator: null atau 'all' berarti lihat semua
                 $unitValue = $userUnit?->value ?? 'all';
-                $showCs       = $isAdmin || ($isKoordinator && in_array($unitValue, ['all', 'cleaning']));
+                $showCs       = $isAdmin || $isPjCs || ($isKoordinator && in_array($unitValue, ['all', 'cleaning']));
                 // Chief/koordinator/admin lihat rekap security; danru tetap seperti anggota security.
                 $showSecurity = $isAdmin || $isChief
                     || ($isKoordinator && in_array($unitValue, ['all', 'security']));
@@ -174,6 +176,10 @@
                         $pendingCutiValidasi
                             ->where('status', \App\Enums\StatusCuti::MENUNGGU_CHIEF)
                             ->whereHas('pjlp', fn($q) => $q->where('unit', \App\Enums\UnitType::SECURITY));
+                    } elseif ($user->hasRole('pj_cs')) {
+                        $pendingCutiValidasi
+                            ->where('status', \App\Enums\StatusCuti::MENUNGGU_PJ_CS)
+                            ->whereHas('pjlp', fn($q) => $q->where('unit', \App\Enums\UnitType::CLEANING));
                     } elseif ($user->hasRole('koordinator')) {
                         $pendingCutiValidasi
                             ->whereIn('status', [\App\Enums\StatusCuti::MENUNGGU, \App\Enums\StatusCuti::MENUNGGU_KOORDINATOR])
@@ -283,16 +289,6 @@
                             <span class="nav-link-title">Rekap Bank Sampah</span>
                         </a>
                     </li>
-                    @if($isKoordinator)
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('gerakan-jumat-sehat.*') ? 'active' : '' }}" href="{{ route('gerakan-jumat-sehat.rekap') }}">
-                            <span class="nav-link-icon d-md-none d-lg-inline-block">
-                                <i class="ti ti-heartbeat"></i>
-                            </span>
-                            <span class="nav-link-title">Rekap Jumat Sehat</span>
-                        </a>
-                    </li>
-                    @endif
 
                 @elseif($isCleaningPjlp)
                 <li class="nav-item">
@@ -343,14 +339,6 @@
                         <span class="nav-link-title">Logbook Bank Sampah</span>
                     </a>
                 </li>
-                <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('gerakan-jumat-sehat.*') ? 'active' : '' }}" href="{{ route('gerakan-jumat-sehat.index') }}">
-                        <span class="nav-link-icon d-md-none d-lg-inline-block">
-                            <i class="ti ti-heartbeat"></i>
-                        </span>
-                        <span class="nav-link-title">Jumat Sehat</span>
-                    </a>
-                </li>
                 @endif
 
                 {{-- ============================================================
@@ -364,7 +352,7 @@
                         Security
                     </div>
                 </li>
-                @if($isAdmin)
+                @if($isAdmin || $isChief)
                 <li class="nav-item">
                     <a class="nav-link {{ request()->routeIs('jadwal-security.*') ? 'active' : '' }}" href="{{ route('jadwal-security.index') }}">
                         <span class="nav-link-icon d-md-none d-lg-inline-block">
@@ -442,30 +430,10 @@
                     </a>
                 </li>
 
-                @if($isSecurityPjlp)
-                <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('gerakan-jumat-sehat.*') ? 'active' : '' }}" href="{{ route('gerakan-jumat-sehat.index') }}">
-                        <span class="nav-link-icon d-md-none d-lg-inline-block">
-                            <i class="ti ti-heartbeat"></i>
-                        </span>
-                        <span class="nav-link-title">Jumat Sehat</span>
-                    </a>
-                </li>
-                @endif
-                @if($isChief || $isKoordinator)
-                <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('gerakan-jumat-sehat.rekap') ? 'active' : '' }}" href="{{ route('gerakan-jumat-sehat.rekap') }}">
-                        <span class="nav-link-icon d-md-none d-lg-inline-block">
-                            <i class="ti ti-heartbeat"></i>
-                        </span>
-                        <span class="nav-link-title">Rekap Jumat Sehat</span>
-                    </a>
-                </li>
-                @endif
                 @endif
 
                 {{-- ============================================================
-                     K3 — Laporan Kecelakaan Kerja
+                     K3 — Laporan Kecelakaan & Jumat Sehat
                      Terlihat oleh: semua user (form), rekap untuk admin/koordinator
                 ============================================================ --}}
                 <li class="nav-item">
@@ -482,21 +450,20 @@
                         <span class="nav-link-title">Laporan Kecelakaan</span>
                     </a>
                 </li>
-                @can('laporan.view')
+                @if(!$isKoordinator && !$isAdmin && !$isManajemen)
                 <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('laporan-kecelakaan.rekap') ? 'active' : '' }}"
-                       href="{{ route('laporan-kecelakaan.rekap') }}">
+                    <a class="nav-link {{ request()->routeIs('gerakan-jumat-sehat.index') || request()->routeIs('gerakan-jumat-sehat.store') ? 'active' : '' }}"
+                       href="{{ route('gerakan-jumat-sehat.index') }}">
                         <span class="nav-link-icon d-md-none d-lg-inline-block">
-                            <i class="ti ti-report-medical"></i>
+                            <i class="ti ti-heartbeat"></i>
                         </span>
-                        <span class="nav-link-title">Rekap K3</span>
+                        <span class="nav-link-title">Jumat Sehat</span>
                     </a>
                 </li>
-                @endcan
-
+                @endif
                 {{-- ============================================================
                      SECTION: LAPORAN
-                     Terlihat oleh: koordinator, admin, manajemen
+                     Terlihat oleh: koordinator, admin, manajemen, chief
                 ============================================================ --}}
                 @can('laporan.view')
                 <li class="nav-item">
@@ -512,13 +479,31 @@
                         <span class="nav-link-title">Rekap Cuti</span>
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('laporan-kecelakaan.rekap') ? 'active' : '' }}"
+                       href="{{ route('laporan-kecelakaan.rekap') }}">
+                        <span class="nav-link-icon d-md-none d-lg-inline-block">
+                            <i class="ti ti-report-medical"></i>
+                        </span>
+                        <span class="nav-link-title">Rekap K3</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('gerakan-jumat-sehat.rekap') ? 'active' : '' }}"
+                       href="{{ route('gerakan-jumat-sehat.rekap') }}">
+                        <span class="nav-link-icon d-md-none d-lg-inline-block">
+                            <i class="ti ti-heartbeat"></i>
+                        </span>
+                        <span class="nav-link-title">Rekap Jumat Sehat</span>
+                    </a>
+                </li>
                 @endcan
 
                 {{-- ============================================================
                      SECTION: ADMINISTRASI
                      Terlihat oleh: admin saja
                 ============================================================ --}}
-                @canany(['master.manage', 'user.manage', 'audit-log.view', 'jadwal.manage', 'jadwal-cs.manage'])
+                @if(auth()->user()->canAny(['master.manage', 'user.manage', 'audit-log.view']) || ($showCs && auth()->user()->can('jadwal-cs.manage')))
                 <li class="nav-item">
                     <div class="nav-link-title text-uppercase text-muted small px-3 pt-3 pb-1" style="font-size:0.7rem;letter-spacing:.08em;">
                         Administrasi
@@ -551,10 +536,6 @@
                         </a>
                         <a class="dropdown-item {{ request()->routeIs('master.kegiatan-lk-cs.*') ? 'active' : '' }}" href="{{ route('master.kegiatan-lk-cs.index') }}">
                             <i class="ti ti-list-check me-2"></i> Kegiatan LK CS
-                        </a>
-                        <div class="dropdown-divider"></div>
-                        <a class="dropdown-item {{ request()->routeIs('master.app-settings.*') ? 'active' : '' }}" href="{{ route('master.app-settings.index') }}">
-                            <i class="ti ti-settings me-2"></i> Pengaturan Sistem
                         </a>
                     </div>
                 </li>
@@ -589,6 +570,16 @@
                 </li>
                 @endif
                 @endcannot
+                @can('master.manage')
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('master.app-settings.*') ? 'active' : '' }}" href="{{ route('master.app-settings.index') }}">
+                        <span class="nav-link-icon d-md-none d-lg-inline-block">
+                            <i class="ti ti-settings"></i>
+                        </span>
+                        <span class="nav-link-title">Pengaturan Sistem</span>
+                    </a>
+                </li>
+                @endcan
                 @can('user.manage')
                 <li class="nav-item">
                     <a class="nav-link {{ request()->routeIs('users.*') ? 'active' : '' }}" href="{{ route('users.index') }}">
@@ -609,7 +600,7 @@
                     </a>
                 </li>
                 @endcan
-                @endcanany
+                @endif
 
                 {{-- ============================================================
                      PROFIL & LOGOUT

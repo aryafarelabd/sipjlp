@@ -116,12 +116,14 @@
                                 $cu = old('unit', $user->unit?->value);
                                 // Determine active path
                                 $isPjlp      = in_array($cr, ['pjlp', 'danru']);
-                                $isKoord     = in_array($cr, ['koordinator', 'chief']);
+                                $isKoord     = in_array($cr, ['koordinator', 'chief', 'pj_cs']);
                                 $isPjlpCs    = $isPjlp && $cu === 'cleaning';
                                 $isPjlpSec   = $isPjlp && $cu === 'security';
                                 $isDanru     = $cr === 'danru';
                                 $isChief     = $cr === 'chief';
-                                $isKoordCs   = $isKoord && !$isChief;
+                                $isPjCs      = $cr === 'pj_cs';
+                                $isKoordCs   = $isKoord && $cu === 'cleaning';
+                                $isKoordSec  = $cr === 'koordinator' && $cu === 'security';
                             @endphp
 
                             <div class="mb-1">
@@ -196,14 +198,44 @@
 
                                                 <label class="sub-role-btn cursor-pointer {{ $isKoordCs ? 'active' : '' }}" id="btnKoordCs">
                                                     <input type="radio" name="_g2_koord" value="cs" class="d-none g2-koord-radio" {{ $isKoordCs ? 'checked' : '' }}>
-                                                    <i class="ti ti-building-hospital me-1"></i> Koordinator CS
+                                                    <i class="ti ti-building-hospital me-1"></i> Unit CS
+                                                    <i class="ti ti-chevron-right ms-1 text-muted" style="font-size:0.75rem;"></i>
                                                 </label>
 
-                                                <label class="sub-role-btn cursor-pointer {{ $isChief ? 'active' : '' }}" id="btnChief">
-                                                    <input type="radio" name="_g2_koord" value="security" class="d-none g2-koord-radio" {{ $isChief ? 'checked' : '' }}>
-                                                    <i class="ti ti-shield-check me-1"></i> Chief Security
+                                                <label class="sub-role-btn cursor-pointer {{ ($isChief || $isKoordSec) ? 'active' : '' }}" id="btnChief">
+                                                    <input type="radio" name="_g2_koord" value="security" class="d-none g2-koord-radio" {{ ($isChief || $isKoordSec) ? 'checked' : '' }}>
+                                                    <i class="ti ti-shield me-1"></i> Unit Security
+                                                    <i class="ti ti-chevron-right ms-1 text-muted" style="font-size:0.75rem;"></i>
                                                 </label>
 
+                                            </div>
+                                            <div id="secKoordSubSec" style="{{ ($isChief || $isKoordSec) ? '' : 'display:none;' }}" class="mt-2 ps-2 border-start border-2 border-blue">
+                                                <div class="small text-muted mb-2">Pilih jabatan:</div>
+                                                <div class="d-flex flex-wrap gap-2">
+                                                    <label class="sub-role-btn cursor-pointer {{ $isKoordSec ? 'active' : '' }}">
+                                                        <input type="radio" name="_g3_sec_koord" value="koordinator" class="d-none g3-sec-koord-radio" {{ $isKoordSec ? 'checked' : '' }}>
+                                                        <i class="ti ti-user-check me-1"></i> Koordinator Security
+                                                    </label>
+                                                    <label class="sub-role-btn cursor-pointer {{ $isChief ? 'active' : '' }}">
+                                                        <input type="radio" name="_g3_sec_koord" value="chief" class="d-none g3-sec-koord-radio" {{ $isChief ? 'checked' : '' }}>
+                                                        <i class="ti ti-shield-check me-1"></i> Chief Security
+                                                        <span class="text-muted ms-1" style="font-size:0.72rem;">(Kepala Lapangan)</span>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <div id="csSubSec" style="{{ $isKoordCs ? '' : 'display:none;' }}" class="mt-2 ps-2 border-start border-2 border-blue">
+                                                <div class="small text-muted mb-2">Pilih jabatan:</div>
+                                                <div class="d-flex flex-wrap gap-2">
+                                                    <label class="sub-role-btn cursor-pointer {{ ($isKoordCs && !$isPjCs) ? 'active' : '' }}">
+                                                        <input type="radio" name="_g3_cs" value="koordinator" class="d-none g3-cs-radio" {{ ($isKoordCs && !$isPjCs) ? 'checked' : '' }}>
+                                                        <i class="ti ti-user-check me-1"></i> Koordinator CS
+                                                    </label>
+                                                    <label class="sub-role-btn cursor-pointer {{ $isPjCs ? 'active' : '' }}">
+                                                        <input type="radio" name="_g3_cs" value="pj_cs" class="d-none g3-cs-radio" {{ $isPjCs ? 'checked' : '' }}>
+                                                        <i class="ti ti-star me-1"></i> PJ CS
+                                                        <span class="text-muted ms-1" style="font-size:0.72rem;">(Penanggung Jawab)</span>
+                                                    </label>
+                                                </div>
                                             </div>
                                         </div>
                                     </label>
@@ -336,14 +368,18 @@ document.querySelectorAll('.g1-radio').forEach(radio => {
         setG1Active(radio.closest('.role-option'));
         const pjlpSec  = document.getElementById('pjlpUnitSec');
         const koordSec = document.getElementById('koordUnitSec');
-        const secSub   = document.getElementById('securitySubSec');
+        const secSub        = document.getElementById('securitySubSec');
+        const csSub         = document.getElementById('csSubSec');
+        const secKoordSub   = document.getElementById('secKoordSubSec');
 
         pjlpSec.style.display  = g1 === 'pjlp'        ? '' : 'none';
         koordSec.style.display = g1 === 'koordinator'  ? '' : 'none';
-        if (secSub) secSub.style.display = 'none';
+        if (secSub)      secSub.style.display      = 'none';
+        if (csSub)       csSub.style.display       = 'none';
+        if (secKoordSub) secKoordSub.style.display = 'none';
 
-        document.querySelectorAll('.g2-pjlp-radio,.g2-koord-radio,.g3-sec-radio').forEach(r => r.checked = false);
-        document.querySelectorAll('#pjlpUnitSec .sub-role-btn, #koordUnitSec .sub-role-btn, #securitySubSec .sub-role-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.g2-pjlp-radio,.g2-koord-radio,.g3-sec-radio,.g3-cs-radio,.g3-sec-koord-radio').forEach(r => r.checked = false);
+        document.querySelectorAll('#pjlpUnitSec .sub-role-btn, #koordUnitSec .sub-role-btn, #securitySubSec .sub-role-btn, #csSubSec .sub-role-btn, #secKoordSubSec .sub-role-btn').forEach(b => b.classList.remove('active'));
 
         if (g1 !== 'pjlp' && g1 !== 'koordinator') {
             document.getElementById('hiddenRole').value = g1;
@@ -392,13 +428,51 @@ document.querySelectorAll('.g3-sec-radio').forEach(radio => {
 document.querySelectorAll('.g2-koord-radio').forEach(radio => {
     radio.addEventListener('change', () => {
         setSubActive(document.getElementById('koordUnitSec'), radio.closest('.sub-role-btn'));
+        const csSub       = document.getElementById('csSubSec');
+        const secKoordSub = document.getElementById('secKoordSubSec');
         if (radio.value === 'cs') {
-            document.getElementById('hiddenRole').value = 'koordinator';
+            csSub.style.display       = '';
+            secKoordSub.style.display = 'none';
+            document.querySelectorAll('.g3-sec-koord-radio').forEach(r => r.checked = false);
+            document.querySelectorAll('#secKoordSubSec .sub-role-btn').forEach(b => b.classList.remove('active'));
+            const g3cs = document.querySelector('.g3-cs-radio:checked');
+            if (!g3cs) {
+                const first = document.querySelector('.g3-cs-radio');
+                if (first) { first.checked = true; first.closest('.sub-role-btn').classList.add('active'); }
+            }
+            const g3csVal = document.querySelector('.g3-cs-radio:checked')?.value ?? 'koordinator';
+            document.getElementById('hiddenRole').value = g3csVal;
             document.getElementById('hiddenUnit').value = 'cleaning';
         } else {
-            document.getElementById('hiddenRole').value = 'chief';
+            csSub.style.display       = 'none';
+            secKoordSub.style.display = '';
+            document.querySelectorAll('.g3-cs-radio').forEach(r => r.checked = false);
+            document.querySelectorAll('#csSubSec .sub-role-btn').forEach(b => b.classList.remove('active'));
+            const g3sk = document.querySelector('.g3-sec-koord-radio:checked');
+            if (!g3sk) {
+                const first = document.querySelector('.g3-sec-koord-radio');
+                if (first) { first.checked = true; first.closest('.sub-role-btn').classList.add('active'); }
+            }
+            const g3skVal = document.querySelector('.g3-sec-koord-radio:checked')?.value ?? 'chief';
+            document.getElementById('hiddenRole').value = g3skVal;
             document.getElementById('hiddenUnit').value = 'security';
         }
+    });
+});
+
+document.querySelectorAll('.g3-cs-radio').forEach(radio => {
+    radio.addEventListener('change', () => {
+        setSubActive(document.getElementById('csSubSec'), radio.closest('.sub-role-btn'));
+        document.getElementById('hiddenRole').value = radio.value;
+        document.getElementById('hiddenUnit').value = 'cleaning';
+    });
+});
+
+document.querySelectorAll('.g3-sec-koord-radio').forEach(radio => {
+    radio.addEventListener('change', () => {
+        setSubActive(document.getElementById('secKoordSubSec'), radio.closest('.sub-role-btn'));
+        document.getElementById('hiddenRole').value = radio.value;
+        document.getElementById('hiddenUnit').value = 'security';
     });
 });
 

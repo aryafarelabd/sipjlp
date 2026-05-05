@@ -46,7 +46,9 @@
                 <strong>Mode baca.</strong>
                 Saat ini window {{ $windowInfo['reason'] }}.
                 Jadwal yang dapat diubah adalah bulan <strong>{{ $windowBulanLabel }}</strong>.
+                @if(auth()->user()->hasAnyRole(['admin', 'koordinator']))
                 <a href="{{ route('jadwal-security.index', ['bulan' => $windowInfo['bulan'], 'tahun' => $windowInfo['tahun']]) }}" class="alert-link ms-1">Buka bulan tersebut →</a>
+                @endif
             </div>
             @endif
         @else
@@ -170,14 +172,30 @@
                                                 $key    = $pjlp->id . '_' . $di['date']->format('Y-m-d');
                                                 $jadwal = $jadwals->get($key);
                                                 $shift  = $jadwal?->shift;
-                                                $bg     = $shift ? match(strtolower($shift->nama)) {
-                                                    'pagi'  => '#cce5ff', 'siang' => '#fff3cd', 'malam' => '#f8c8dc',
-                                                    default => '#667382',
-                                                } : '';
-                                                $tc     = $shift ? match(strtolower($shift->nama)) {
-                                                    'pagi'  => '#004085', 'siang' => '#856404', 'malam' => '#721c47',
-                                                    default => '#fff',
-                                                } : '';
+                                                $status = $jadwal?->status ?? null;
+                                                if ($shift && $status === 'normal') {
+                                                    $bg = match(strtolower($shift->nama)) {
+                                                        'pagi'  => '#cce5ff', 'siang' => '#fff3cd', 'malam' => '#f8c8dc',
+                                                        default => '#667382',
+                                                    };
+                                                    $tc = match(strtolower($shift->nama)) {
+                                                        'pagi'  => '#004085', 'siang' => '#856404', 'malam' => '#721c47',
+                                                        default => '#fff',
+                                                    };
+                                                    $label = strtoupper($shift->nama);
+                                                } elseif ($status && $status !== 'normal') {
+                                                    [$label, $bg, $tc] = match($status) {
+                                                        'libur'           => ['L',     '#e2e8f0', '#4a5568'],
+                                                        'libur_hari_raya' => ['HR',    '#fed7aa', '#9a3412'],
+                                                        'cuti'            => ['CUTI',  '#dbeafe', '#1e40af'],
+                                                        'izin'            => ['IZIN',  '#e9d5ff', '#6b21a8'],
+                                                        'sakit'           => ['SAKIT', '#fce7f3', '#9d174d'],
+                                                        'alpha'           => ['ALPHA', '#fee2e2', '#991b1b'],
+                                                        default           => ['-',     '',        ''],
+                                                    };
+                                                } else {
+                                                    $bg = ''; $tc = ''; $label = '-';
+                                                }
                                             @endphp
                                             <td class="text-center p-1
                                                 @if($di['isSunday']) bg-danger-lt
@@ -192,7 +210,7 @@
                                                 <span class="badge jadwal-badge"
                                                       id="badge-{{ $pjlp->id }}-{{ $di['date']->format('Y-m-d') }}"
                                                       style="{{ $bg ? "background-color:{$bg};color:{$tc};" : '' }}">
-                                                    {{ $shift ? strtoupper($shift->nama) : '-' }}
+                                                    {{ $label }}
                                                 </span>
                                             </td>
                                         @endforeach
@@ -234,29 +252,44 @@
                     </select>
                 </div>
 
-                <div class="d-grid gap-2 mb-2">
-                    @foreach($shifts as $shift)
-                        @php
-                            $bg = match(strtolower($shift->nama)) {
-                                'pagi'  => '#cce5ff', 'siang' => '#fff3cd', 'malam' => '#f8c8dc',
-                                default => '#667382',
-                            };
-                            $tc = match(strtolower($shift->nama)) {
-                                'pagi'  => '#004085', 'siang' => '#856404', 'malam' => '#721c47',
-                                default => '#fff',
-                            };
-                        @endphp
-                        <button type="button" class="btn shift-btn fw-semibold"
-                                style="background-color:{{ $bg }};color:{{ $tc }};border-color:{{ $bg }};"
-                                data-shift-id="{{ $shift->id }}"
-                                data-shift-name="{{ $shift->nama }}"
-                                data-bg="{{ $bg }}" data-tc="{{ $tc }}">
-                            {{ strtoupper($shift->nama) }}
-                            <small class="fw-normal ms-1">({{ \Carbon\Carbon::parse($shift->jam_mulai)->format('H:i') }}–{{ \Carbon\Carbon::parse($shift->jam_selesai)->format('H:i') }})</small>
-                        </button>
-                    @endforeach
+                <div class="mb-2">
+                    <label class="form-label small mb-1">Shift Kerja</label>
+                    <div class="d-grid gap-2">
+                        @foreach($shifts as $shift)
+                            @php
+                                $bg = match(strtolower($shift->nama)) {
+                                    'pagi'  => '#cce5ff', 'siang' => '#fff3cd', 'malam' => '#f8c8dc',
+                                    default => '#667382',
+                                };
+                                $tc = match(strtolower($shift->nama)) {
+                                    'pagi'  => '#004085', 'siang' => '#856404', 'malam' => '#721c47',
+                                    default => '#fff',
+                                };
+                            @endphp
+                            <button type="button" class="btn shift-btn fw-semibold"
+                                    style="background-color:{{ $bg }};color:{{ $tc }};border-color:{{ $bg }};"
+                                    data-shift-id="{{ $shift->id }}"
+                                    data-shift-name="{{ $shift->nama }}"
+                                    data-bg="{{ $bg }}" data-tc="{{ $tc }}">
+                                {{ strtoupper($shift->nama) }}
+                                <small class="fw-normal ms-1">({{ \Carbon\Carbon::parse($shift->jam_mulai)->format('H:i') }}–{{ \Carbon\Carbon::parse($shift->jam_selesai)->format('H:i') }})</small>
+                            </button>
+                        @endforeach
+                    </div>
                 </div>
-                <button type="button" class="btn btn-sm btn-outline-danger w-100" id="btnHapus">
+                <hr class="my-2">
+                <div class="mb-2">
+                    <label class="form-label small mb-1">Status Non-Kerja</label>
+                    <div class="d-flex flex-wrap gap-1">
+                        <button type="button" class="btn btn-sm status-btn fw-semibold" data-status="libur"           style="background:#e2e8f0;color:#4a5568;">L</button>
+                        <button type="button" class="btn btn-sm status-btn fw-semibold" data-status="libur_hari_raya" style="background:#fed7aa;color:#9a3412;">HR</button>
+                        <button type="button" class="btn btn-sm status-btn fw-semibold" data-status="cuti"            style="background:#dbeafe;color:#1e40af;">CUTI</button>
+                        <button type="button" class="btn btn-sm status-btn fw-semibold" data-status="izin"            style="background:#e9d5ff;color:#6b21a8;">IZIN</button>
+                        <button type="button" class="btn btn-sm status-btn fw-semibold" data-status="sakit"           style="background:#fce7f3;color:#9d174d;">SAKIT</button>
+                        <button type="button" class="btn btn-sm status-btn fw-semibold" data-status="alpha"           style="background:#fee2e2;color:#991b1b;">ALPHA</button>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-danger w-100 mt-1" id="btnHapus">
                     <i class="ti ti-trash me-1"></i>Hapus jadwal hari ini
                 </button>
             </div>
@@ -333,25 +366,36 @@ function openModal(pjlpId, tanggal, pjlpName, tanggalDisplay) {
 // Shift buttons
 document.querySelectorAll('.shift-btn').forEach(btn => {
     btn.addEventListener('click', function () {
-        saveJadwal(this.dataset.shiftId, this.dataset.shiftName, this.dataset.bg, this.dataset.tc);
+        saveJadwal({ shift_id: this.dataset.shiftId }, this.dataset.bg, this.dataset.tc);
+    });
+});
+
+// Status non-kerja buttons
+document.querySelectorAll('.status-btn').forEach(btn => {
+    btn.addEventListener('click', function () {
+        const bg = this.style.background;
+        const tc = this.style.color;
+        saveJadwal({ status: this.dataset.status }, bg, tc);
     });
 });
 
 // Hapus jadwal
 document.getElementById('btnHapus').addEventListener('click', function () {
     if (!confirm('Hapus jadwal hari ini?')) return;
-    saveJadwal(null, '-', '', '');
+    saveJadwal({}, '', '');
 });
 
-function saveJadwal(shiftId, shiftName, bgColor, textColor) {
-    const pjlpId  = document.getElementById('mPjlpId').value;
-    const tanggal = document.getElementById('mTanggalVal').value;
+function saveJadwal(extra, bgColor, textColor) {
+    const pjlpId   = document.getElementById('mPjlpId').value;
+    const tanggal  = document.getElementById('mTanggalVal').value;
     const lokasiId = document.getElementById('mLokasi').value;
+
+    const payload = { pjlp_id: pjlpId, tanggal: tanggal, lokasi_id: lokasiId || null, ...extra };
 
     fetch('{{ route("jadwal-security.update") }}', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-        body: JSON.stringify({ pjlp_id: pjlpId, tanggal: tanggal, shift_id: shiftId, lokasi_id: lokasiId || null })
+        body: JSON.stringify(payload)
     })
     .then(r => r.json())
     .then(data => {

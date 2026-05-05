@@ -68,7 +68,7 @@ class GerakanJumatSehatController extends Controller
     {
         $user   = Auth::user();
 
-        abort_unless($user->hasAnyRole(['admin', 'koordinator', 'chief']), 403);
+        abort_unless($user->can('laporan.view'), 403);
 
         $bulan  = (int) $request->get('bulan', now()->month);
         $tahun  = (int) $request->get('tahun', now()->year);

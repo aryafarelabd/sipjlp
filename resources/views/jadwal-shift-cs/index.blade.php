@@ -10,8 +10,40 @@
                 <h2 class="page-title">Jadwal Shift CS</h2>
                 <div class="text-muted mt-1">Input jadwal shift per PJLP per hari (dikelola oleh Koordinator)</div>
             </div>
+            @if(auth()->user()->hasAnyRole(['admin', 'koordinator']))
+            @php $currentOverride = \App\Models\AppSetting::get('jadwal_window_override', 'auto'); @endphp
+            <div class="col-auto ms-auto d-flex gap-2">
+                @if($currentOverride !== 'open')
+                <form method="POST" action="{{ route('jadwal-shift-cs.set-override') }}">
+                    @csrf
+                    <input type="hidden" name="override" value="open">
+                    <button type="submit" class="btn btn-warning btn-sm" title="Buka paksa agar semua bulan bisa diedit">
+                        <i class="ti ti-lock-open me-1"></i>Buka Paksa
+                    </button>
+                </form>
+                @endif
+                @if($currentOverride !== 'auto')
+                <form method="POST" action="{{ route('jadwal-shift-cs.set-override') }}">
+                    @csrf
+                    <input type="hidden" name="override" value="auto">
+                    <button type="submit" class="btn btn-secondary btn-sm">
+                        <i class="ti ti-refresh me-1"></i>Kembali Otomatis
+                    </button>
+                </form>
+                @endif
+                @if($currentOverride !== 'closed')
+                <form method="POST" action="{{ route('jadwal-shift-cs.set-override') }}">
+                    @csrf
+                    <input type="hidden" name="override" value="closed">
+                    <button type="submit" class="btn btn-danger btn-sm" title="Tutup paksa semua input jadwal">
+                        <i class="ti ti-lock me-1"></i>Tutup Paksa
+                    </button>
+                </form>
+                @endif
+            </div>
+            @endif
             @if($canEdit)
-            <div class="col-auto ms-auto">
+            <div class="col-auto">
                 <button type="button" class="btn btn-success" id="btnPublish" title="Publikasikan jadwal agar terlihat oleh PJLP">
                     <i class="ti ti-send me-1"></i>Publikasikan Jadwal
                 </button>
@@ -50,7 +82,9 @@
                 <strong>Mode baca.</strong>
                 Saat ini window {{ $windowInfo['reason'] }}.
                 Jadwal yang dapat diubah adalah bulan <strong>{{ $windowBulanLabel }}</strong>.
+                @if(auth()->user()->hasAnyRole(['admin', 'koordinator']))
                 <a href="{{ route('jadwal-shift-cs.index', ['bulan' => $windowInfo['bulan'], 'tahun' => $windowInfo['tahun']]) }}" class="alert-link ms-1">Buka bulan tersebut →</a>
+                @endif
             </div>
             @endif
         @else

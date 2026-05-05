@@ -37,6 +37,7 @@ class RolePermissionSeeder extends Seeder
             'jadwal.view-unit',
             'jadwal.view-all',
             'jadwal.manage',
+            'jadwal-cs.manage',
 
             // Cuti
             'cuti.create',
@@ -83,6 +84,50 @@ class RolePermissionSeeder extends Seeder
             'lembar-kerja.view-self',
         ]);
 
+        $danru = Role::create(['name' => 'danru']);
+        $danru->givePermissionTo([
+            'dashboard.view',
+            'pjlp.view-self',
+            'absensi.view-self',
+            'jadwal.view-self',
+            'cuti.create',
+            'cuti.view-self',
+            'cuti.approve',
+        ]);
+
+        $chief = Role::create(['name' => 'chief']);
+        $chief->givePermissionTo([
+            'dashboard.view',
+            'pjlp.view-self',
+            'absensi.view-self',
+            'absensi.view-unit',
+            'jadwal.view-self',
+            'jadwal.view-unit',
+            'jadwal.manage',
+            'jadwal-cs.manage',
+            'cuti.create',
+            'cuti.view-self',
+            'cuti.view-unit',
+            'cuti.approve',
+            'laporan.view',
+        ]);
+
+        $pjCs = Role::create(['name' => 'pj_cs']);
+        $pjCs->givePermissionTo([
+            'dashboard.view',
+            'pjlp.view-self',
+            'absensi.view-self',
+            'absensi.view-unit',
+            'jadwal.view-self',
+            'jadwal.view-unit',
+            'jadwal-cs.manage',
+            'cuti.create',
+            'cuti.view-self',
+            'cuti.view-unit',
+            'cuti.approve',
+            'laporan.view',
+        ]);
+
         $koordinator = Role::create(['name' => 'koordinator']);
         $koordinator->givePermissionTo([
             'dashboard.view',
@@ -90,6 +135,7 @@ class RolePermissionSeeder extends Seeder
             'absensi.view-unit',
             'jadwal.view-unit',
             'jadwal.manage',
+            'jadwal-cs.manage',
             'cuti.view-unit',
             'cuti.approve',
             'lembar-kerja.view-unit',

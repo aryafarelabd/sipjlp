@@ -70,8 +70,14 @@ class CutiPolicy
                 && $cuti->pjlp?->unit === UnitType::SECURITY;
         }
 
-        // Koordinator: approve menunggu (CS) atau menunggu_koordinator (security)
-        if ($user->isKoordinator()) {
+        // PJ CS: approve level menunggu_pj_cs, unit cleaning saja
+        if ($user->hasRole('pj_cs')) {
+            return $cuti->status === StatusCuti::MENUNGGU_PJ_CS
+                && $cuti->pjlp?->unit === UnitType::CLEANING;
+        }
+
+        // Koordinator: approve menunggu (legacy) atau menunggu_koordinator
+        if ($user->hasRole('koordinator')) {
             $statusOk = in_array($cuti->status, [
                 StatusCuti::MENUNGGU,
                 StatusCuti::MENUNGGU_KOORDINATOR,

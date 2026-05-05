@@ -83,6 +83,25 @@
                     </div>
                     @endif
 
+                    @if(session('modal_error'))
+                    <div class="modal modal-blur fade show d-block" id="modalError" tabindex="-1" role="dialog" aria-modal="true" style="background:rgba(0,0,0,.4);">
+                        <div class="modal-dialog modal-sm modal-dialog-centered" role="document">
+                            <div class="modal-content">
+                                <div class="modal-body text-center py-4">
+                                    <div class="mb-3 text-danger">
+                                        <i class="ti ti-alert-circle" style="font-size:3rem;"></i>
+                                    </div>
+                                    <h4 class="mb-2">Tidak Ada Jadwal Shift</h4>
+                                    <p class="text-muted mb-4">{{ session('modal_error') }}</p>
+                                    <button type="button" class="btn btn-danger w-100" onclick="document.getElementById('modalError').remove()">
+                                        Tutup
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    @endif
+
                     @if($errors->any())
                     <div class="alert alert-danger alert-dismissible" role="alert">
                         <div class="d-flex">

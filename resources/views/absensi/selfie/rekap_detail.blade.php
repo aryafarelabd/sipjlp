@@ -290,7 +290,7 @@
                                 <label class="form-check form-check-inline">
                                     <input class="form-check-input" type="radio" name="status" value="{{ $val }}" id="status_{{ $val }}" required>
                                     <span class="form-check-label">
-                                        <span class="badge bg-{{ $color }}">{{ $label }}</span>
+                                        <span class="badge bg-{{ $color }} text-white">{{ $label }}</span>
                                     </span>
                                 </label>
                             </div>

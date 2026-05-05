@@ -18,13 +18,13 @@
                 <p class="text-muted">{{ $pjlp->jabatan }}</p>
                 <div class="mb-3">
                     @if($pjlp->status == 'aktif')
-                        <span class="badge bg-success">Aktif</span>
+                        <span class="badge bg-success text-white">Aktif</span>
                     @elseif($pjlp->status == 'nonaktif')
-                        <span class="badge bg-secondary">Non-Aktif</span>
+                        <span class="badge bg-secondary text-white">Non-Aktif</span>
                     @elseif($pjlp->status == 'cuti')
-                        <span class="badge bg-warning">Cuti</span>
+                        <span class="badge bg-warning text-white">Cuti</span>
                     @elseif($pjlp->status == 'resign')
-                        <span class="badge bg-danger">Resign</span>
+                        <span class="badge bg-danger text-white">Resign</span>
                     @endif
 
                     @if($pjlp->unit == 'security')
@@ -89,7 +89,7 @@
                 </div>
                 <div class="row mb-2">
                     <div class="col-5 text-muted">Status</div>
-                    <div class="col-7"><span class="badge bg-success">Aktif</span></div>
+                    <div class="col-7"><span class="badge bg-success text-white">Aktif</span></div>
                 </div>
             </div>
         </div>
@@ -158,7 +158,7 @@
                                             </span>
                                         </td>
                                         <td>
-                                            <span class="badge bg-{{ $absensi->status?->color() ?? 'secondary' }}">
+                                            <span class="badge bg-{{ $absensi->status?->color() ?? 'secondary' }} text-white">
                                                 {{ $absensi->status?->label() ?? '-' }}
                                             </span>
                                         </td>

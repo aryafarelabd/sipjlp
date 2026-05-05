@@ -4,10 +4,11 @@ namespace App\Enums;
 
 enum StatusCuti: string
 {
-    case MENUNGGU             = 'menunggu';             // CS: langsung ke koordinator (legacy)
+    case MENUNGGU             = 'menunggu';             // legacy
     case MENUNGGU_DANRU       = 'menunggu_danru';       // Security anggota → danru
     case MENUNGGU_CHIEF       = 'menunggu_chief';       // Security → chief
-    case MENUNGGU_KOORDINATOR = 'menunggu_koordinator'; // Security → koordinator (final)
+    case MENUNGGU_KOORDINATOR = 'menunggu_koordinator'; // Security/CS → koordinator (final)
+    case MENUNGGU_PJ_CS       = 'menunggu_pj_cs';       // CS anggota → PJ CS
     case DISETUJUI            = 'disetujui';
     case DITOLAK              = 'ditolak';
 
@@ -18,6 +19,7 @@ enum StatusCuti: string
             self::MENUNGGU_DANRU       => 'Menunggu Danru',
             self::MENUNGGU_CHIEF       => 'Menunggu Chief',
             self::MENUNGGU_KOORDINATOR => 'Menunggu Koordinator',
+            self::MENUNGGU_PJ_CS       => 'Menunggu PJ CS',
             self::DISETUJUI            => 'Disetujui',
             self::DITOLAK              => 'Ditolak',
         };
@@ -29,7 +31,8 @@ enum StatusCuti: string
             self::MENUNGGU,
             self::MENUNGGU_DANRU,
             self::MENUNGGU_CHIEF,
-            self::MENUNGGU_KOORDINATOR => 'warning',
+            self::MENUNGGU_KOORDINATOR,
+            self::MENUNGGU_PJ_CS       => 'warning',
             self::DISETUJUI            => 'success',
             self::DITOLAK              => 'danger',
         };
@@ -42,6 +45,7 @@ enum StatusCuti: string
             self::MENUNGGU_DANRU,
             self::MENUNGGU_CHIEF,
             self::MENUNGGU_KOORDINATOR,
+            self::MENUNGGU_PJ_CS,
         ]);
     }
 }

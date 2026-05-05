@@ -29,9 +29,9 @@
                     <td>{{ $jenis->keterangan ?? '-' }}</td>
                     <td>
                         @if($jenis->is_active)
-                        <span class="badge bg-success">Aktif</span>
+                        <span class="badge bg-success text-white">Aktif</span>
                         @else
-                        <span class="badge bg-danger">Nonaktif</span>
+                        <span class="badge bg-danger text-white">Nonaktif</span>
                         @endif
                     </td>
                     <td>

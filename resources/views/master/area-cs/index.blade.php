@@ -65,9 +65,9 @@
                                 <td class="text-muted">{{ $area->deskripsi ?? '-' }}</td>
                                 <td>
                                     @if($area->is_active)
-                                        <span class="badge bg-success">Aktif</span>
+                                        <span class="badge bg-success text-white">Aktif</span>
                                     @else
-                                        <span class="badge bg-secondary">Nonaktif</span>
+                                        <span class="badge bg-secondary text-white">Nonaktif</span>
                                     @endif
                                 </td>
                                 <td>

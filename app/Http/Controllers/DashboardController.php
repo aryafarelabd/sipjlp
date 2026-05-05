@@ -40,7 +40,7 @@ class DashboardController extends Controller
             return $this->pjlpDashboard($user);
         }
 
-        if ($user->hasRole(['koordinator', 'chief'])) {
+        if ($user->hasRole(['koordinator', 'chief', 'pj_cs'])) {
             return $this->koordinatorDashboard($user);
         }
 

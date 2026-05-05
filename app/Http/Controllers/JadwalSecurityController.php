@@ -123,10 +123,11 @@ class JadwalSecurityController extends Controller
     public function update(Request $request)
     {
         $request->validate([
-            'pjlp_id'  => 'required|exists:pjlp,id',
-            'tanggal'  => 'required|date',
-            'shift_id' => 'nullable|exists:shifts,id',
-            'lokasi_id'=> 'nullable|exists:lokasi,id',
+            'pjlp_id'   => 'required|exists:pjlp,id',
+            'tanggal'   => 'required|date',
+            'status'    => 'nullable|in:normal,libur,libur_hari_raya,cuti,izin,sakit,alpha',
+            'shift_id'  => 'nullable|exists:shifts,id',
+            'lokasi_id' => 'nullable|exists:lokasi,id',
         ]);
 
         abort_unless(auth()->user()->hasRole('admin'), 403);
@@ -137,44 +138,47 @@ class JadwalSecurityController extends Controller
             return response()->json(['success' => false, 'message' => 'Di luar window input jadwal. Jadwal hanya bisa diubah pada tanggal 25–akhir bulan (untuk bulan depan) atau tanggal 1–5 (untuk revisi bulan lalu).'], 403);
         }
 
+        $status = $request->input('status', 'normal');
+        $isNonKerja = in_array($status, ['libur', 'libur_hari_raya', 'cuti', 'izin', 'sakit', 'alpha']);
+
+        if ($isNonKerja) {
+            $jadwal = Jadwal::firstOrNew(['pjlp_id' => $request->pjlp_id, 'tanggal' => $request->tanggal]);
+            if (!$jadwal->exists) $jadwal->created_by = auth()->id();
+            $jadwal->status       = $status;
+            $jadwal->shift_id     = null;
+            $jadwal->lokasi_id    = null;
+            $jadwal->is_published = $jadwal->is_published ?? false;
+            $jadwal->save();
+            AuditLog::log('Update jadwal security', $jadwal, null, $jadwal->toArray());
+
+            [$displayText, $bgColor, $textColor] = $this->statusDisplay($status);
+            return response()->json(['success' => true, 'display_text' => $displayText, 'bg_color' => $bgColor, 'text_color' => $textColor]);
+        }
+
         if ($request->filled('shift_id')) {
-            $jadwal = Jadwal::firstOrNew(
-                ['pjlp_id' => $request->pjlp_id, 'tanggal' => $request->tanggal]
-            );
-            if (!$jadwal->exists) {
-                $jadwal->created_by = auth()->id();
-            }
+            $jadwal = Jadwal::firstOrNew(['pjlp_id' => $request->pjlp_id, 'tanggal' => $request->tanggal]);
+            if (!$jadwal->exists) $jadwal->created_by = auth()->id();
+            $jadwal->status       = 'normal';
             $jadwal->shift_id     = $request->shift_id;
             $jadwal->lokasi_id    = $request->lokasi_id ?? null;
             $jadwal->is_published = $jadwal->is_published ?? false;
             $jadwal->save();
             $jadwal->load('shift');
-
             AuditLog::log('Update jadwal security', $jadwal, null, $jadwal->toArray());
 
-            $shift      = $jadwal->shift;
-            $displayText = $shift ? strtoupper($shift->nama) : '-';
-            $bgColor     = $this->shiftBgColor($shift?->nama);
-            $textColor   = $this->shiftTextColor($shift?->nama);
-
+            $shift = $jadwal->shift;
             return response()->json([
                 'success'      => true,
-                'display_text' => $displayText,
-                'bg_color'     => $bgColor,
-                'text_color'   => $textColor,
+                'display_text' => $shift ? strtoupper($shift->nama) : '-',
+                'bg_color'     => $this->shiftBgColor($shift?->nama),
+                'text_color'   => $this->shiftTextColor($shift?->nama),
             ]);
         }
 
-        // shift_id null = hapus jadwal
-        $deleted = Jadwal::where('pjlp_id', $request->pjlp_id)
-            ->whereDate('tanggal', $request->tanggal)
-            ->delete();
-
+        // kosong = hapus jadwal
+        $deleted = Jadwal::where('pjlp_id', $request->pjlp_id)->whereDate('tanggal', $request->tanggal)->delete();
         if ($deleted) {
-            AuditLog::log('Hapus jadwal security', null, null, [
-                'pjlp_id' => $request->pjlp_id,
-                'tanggal' => $request->tanggal,
-            ]);
+            AuditLog::log('Hapus jadwal security', null, null, ['pjlp_id' => $request->pjlp_id, 'tanggal' => $request->tanggal]);
         }
 
         return response()->json(['success' => true, 'display_text' => '-', 'bg_color' => '', 'text_color' => '']);
@@ -240,6 +244,7 @@ class JadwalSecurityController extends Controller
                     Jadwal::updateOrCreate(
                         ['pjlp_id' => $src->pjlp_id, 'tanggal' => $targetDate],
                         [
+                            'status'      => $src->status ?? 'normal',
                             'shift_id'    => $src->shift_id,
                             'lokasi_id'   => $src->lokasi_id,
                             'is_published'=> false,
@@ -257,6 +262,19 @@ class JadwalSecurityController extends Controller
     }
 
     // ─── helpers ─────────────────────────────────────────────────────────────
+
+    private function statusDisplay(string $status): array
+    {
+        return match($status) {
+            'libur'          => ['L',     '#e2e8f0', '#4a5568'],
+            'libur_hari_raya'=> ['HR',    '#fed7aa', '#9a3412'],
+            'cuti'           => ['CUTI',  '#dbeafe', '#1e40af'],
+            'izin'           => ['IZIN',  '#e9d5ff', '#6b21a8'],
+            'sakit'          => ['SAKIT', '#fce7f3', '#9d174d'],
+            'alpha'          => ['ALPHA', '#fee2e2', '#991b1b'],
+            default          => ['-',     '',        ''],
+        };
+    }
 
     private function shiftBgColor(?string $nama): string
     {

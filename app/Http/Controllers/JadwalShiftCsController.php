@@ -295,6 +295,32 @@ class JadwalShiftCsController extends Controller
     }
 
     /**
+     * Buka/tutup paksa window input jadwal — hanya koordinator & admin.
+     */
+    public function setOverride(Request $request)
+    {
+        abort_unless(
+            auth()->user()->hasAnyRole(['admin', 'koordinator']),
+            403, 'Hanya koordinator dan admin yang dapat membuka/menutup jadwal secara paksa.'
+        );
+
+        $request->validate(['override' => 'required|in:auto,open,closed']);
+
+        $old = AppSetting::get('jadwal_window_override', 'auto');
+        AppSetting::set('jadwal_window_override', $request->override);
+
+        $label = match($request->override) {
+            'open'   => 'Paksa Buka',
+            'closed' => 'Paksa Tutup',
+            default  => 'Otomatis',
+        };
+
+        AuditLog::log("Ubah jadwal_window_override: {$old} → {$request->override}");
+
+        return back()->with('success', "Window jadwal berhasil diubah ke: {$label}.");
+    }
+
+    /**
      * Rekapitulasi jadwal
      */
     public function rekap(Request $request)

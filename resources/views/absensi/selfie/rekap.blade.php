@@ -91,14 +91,14 @@
                             </td>
                             <td class="text-center">
                                 @if($row['total_alpha'] > 0)
-                                    <span class="badge bg-danger">{{ $row['total_alpha'] }}</span>
+                                    <span class="badge bg-danger text-white">{{ $row['total_alpha'] }}</span>
                                 @else
                                     <span class="text-muted">0</span>
                                 @endif
                             </td>
                             <td class="text-center">
                                 @if($row['total_izin'] > 0)
-                                    <span class="badge bg-info">{{ $row['total_izin'] }}</span>
+                                    <span class="badge bg-info text-white">{{ $row['total_izin'] }}</span>
                                 @else
                                     <span class="text-muted">0</span>
                                 @endif
@@ -112,7 +112,7 @@
                             </td>
                             <td class="text-center">
                                 @if($row['total_pulang_cepat'] > 0)
-                                    <span class="badge bg-orange">{{ $row['total_pulang_cepat'] }}</span>
+                                    <span class="badge bg-orange text-white">{{ $row['total_pulang_cepat'] }}</span>
                                 @else
                                     <span class="text-muted">0</span>
                                 @endif

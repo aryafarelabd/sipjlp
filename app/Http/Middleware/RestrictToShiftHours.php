@@ -14,7 +14,7 @@ class RestrictToShiftHours
         $user = Auth::user();
 
         // Admin, koordinator, danru, chief selalu boleh akses (mereka lihat rekap)
-        if ($user->hasAnyRole(['admin', 'koordinator', 'danru', 'chief', 'manajemen'])) {
+        if ($user->hasAnyRole(['admin', 'koordinator', 'danru', 'chief', 'pj_cs', 'manajemen'])) {
             return $next($request);
         }
 
@@ -105,6 +105,6 @@ class RestrictToShiftHours
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json(['success' => false, 'message' => $message], 403);
         }
-        return redirect()->route('dashboard')->with('error', $message);
+        return redirect()->route('dashboard')->with('modal_error', $message);
     }
 }

@@ -140,6 +140,15 @@ class Cuti extends Model
         ]);
     }
 
+    public function approveByPjCs(User $user): void
+    {
+        $this->update([
+            'status'            => StatusCuti::MENUNGGU_KOORDINATOR,
+            'approved_by_pj_cs' => $user->id,
+            'approved_at_pj_cs' => now(),
+        ]);
+    }
+
     public function approve(User $user): void
     {
         $this->update([

@@ -51,7 +51,7 @@ class User extends Authenticatable
 
     public function isKoordinator(): bool
     {
-        return $this->hasRole(['koordinator', 'chief']);
+        return $this->hasRole(['koordinator', 'chief', 'pj_cs']);
     }
 
     public function isAdmin(): bool

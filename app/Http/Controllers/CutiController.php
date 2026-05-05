@@ -91,15 +91,17 @@ class CutiController extends Controller
         $danruId = null;
         if ($user->hasRole('danru')) {
             $status = StatusCuti::MENUNGGU_CHIEF;
-        } elseif ($user->hasRole('chief')) {
+        } elseif ($user->hasRole('chief') || $user->hasRole('pj_cs')) {
             $status = StatusCuti::MENUNGGU_KOORDINATOR;
         } elseif ($pjlp->unit === UnitType::SECURITY) {
             // Anggota security wajib pilih danru
             $request->validate(['danru_id' => 'required|exists:pjlp,id']);
             $danruId = $request->danru_id;
             $status  = StatusCuti::MENUNGGU_DANRU;
+        } elseif ($pjlp->unit === UnitType::CLEANING) {
+            // Anggota CS → ke PJ CS dulu
+            $status = StatusCuti::MENUNGGU_PJ_CS;
         } else {
-            // CS: langsung ke koordinator
             $status = StatusCuti::MENUNGGU;
         }
 
@@ -119,7 +121,6 @@ class CutiController extends Controller
         // Notifikasi Telegram berdasarkan level pertama
         $cuti->load('pjlp.user', 'jenisCuti');
         if ($status === StatusCuti::MENUNGGU_DANRU) {
-            // Notif ke danru yang dipilih
             $danruUser = Pjlp::find($danruId)?->user;
             if ($danruUser?->telegram_chat_id) {
                 $danruUser->notify(new CutiDiajukanNotification($cuti));
@@ -129,8 +130,12 @@ class CutiController extends Controller
             foreach ($chiefs as $c) {
                 $c->notify(new CutiDiajukanNotification($cuti));
             }
+        } elseif ($status === StatusCuti::MENUNGGU_PJ_CS) {
+            $pjCsList = User::role('pj_cs')->whereNotNull('telegram_chat_id')->get();
+            foreach ($pjCsList as $pj) {
+                $pj->notify(new CutiDiajukanNotification($cuti));
+            }
         } else {
-            // CS / menunggu_koordinator: notif ke koordinator unit
             $koordinators = User::role('koordinator')
                 ->where('unit', $pjlp->unit)
                 ->whereNotNull('telegram_chat_id')
@@ -176,7 +181,6 @@ class CutiController extends Controller
             $cuti->approveByChief($user);
             AuditLog::log('Menyetujui cuti (level chief)', $cuti, $dataLama, $cuti->fresh()->toArray());
 
-            // Notif koordinator
             $cuti->load('pjlp', 'jenisCuti');
             $koordinators = User::role('koordinator')
                 ->where('unit', $cuti->pjlp->unit)
@@ -186,6 +190,20 @@ class CutiController extends Controller
                 $k->notify(new CutiDiajukanNotification($cuti->load('pjlp.user', 'jenisCuti')));
             }
             return back()->with('success', 'Cuti disetujui, diteruskan ke Koordinator.');
+        }
+
+        if ($user->hasRole('pj_cs')) {
+            $cuti->approveByPjCs($user);
+            AuditLog::log('Menyetujui cuti (level PJ CS)', $cuti, $dataLama, $cuti->fresh()->toArray());
+
+            $cuti->load('pjlp', 'jenisCuti');
+            $koordinators = User::role('koordinator')
+                ->whereNotNull('telegram_chat_id')
+                ->get();
+            foreach ($koordinators as $k) {
+                $k->notify(new CutiDiajukanNotification($cuti->load('pjlp.user', 'jenisCuti')));
+            }
+            return back()->with('success', 'Cuti disetujui, diteruskan ke Koordinator CS.');
         }
 
         // Koordinator / admin: final approval
@@ -272,6 +290,12 @@ class CutiController extends Controller
         if ($user->hasRole('chief')) {
             $query->where('status', StatusCuti::MENUNGGU_CHIEF)
                 ->whereHas('pjlp', fn ($q) => $q->where('unit', UnitType::SECURITY));
+            return;
+        }
+
+        if ($user->hasRole('pj_cs')) {
+            $query->where('status', StatusCuti::MENUNGGU_PJ_CS)
+                ->whereHas('pjlp', fn ($q) => $q->where('unit', UnitType::CLEANING));
             return;
         }
 
